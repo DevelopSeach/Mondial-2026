@@ -1,0 +1,896 @@
+/* ════════════════════════════════════════════════════════════════
+   מונדיאל 2026 - מערכת עיצוב
+   השראה: הצבעים הרשמיים של מונדיאל 2026 (אדום אצטדיון, חרדל זהב,
+   ירוק דשא, שחור אסטרטגי) - מיזוג של אסתטיקת מגזין ספורט עיתונאי
+   עם דחיסות מודרנית של דשבורד
+   ════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* בסיס */
+  --ink:           #0a1420;        /* שחור-כחול עמוק */
+  --ink-2:         #15263a;
+  --ink-soft:      #1f3349;
+  --paper:         #f5f0e6;        /* קלף מעט מצהיב - אסתטיקת מגזין */
+  --paper-pure:    #ffffff;
+  --paper-dim:     #e9e2d2;
+
+  /* צבעי מבטא - השראה מ-FIFA 2026 */
+  --gold:          #e6b54a;        /* זהב חרדל */
+  --gold-deep:     #b88a1a;
+  --crimson:       #c1272d;        /* אדום אצטדיון */
+  --crimson-deep:  #8a1a1f;
+  --pitch:         #2d6e3e;        /* ירוק דשא */
+  --pitch-deep:    #1d4a2a;
+  --hot-orange:    #f26b2e;
+
+  /* נייטרלים */
+  --line:          rgba(10,20,32,0.12);
+  --line-bold:     rgba(10,20,32,0.25);
+  --muted:         #6b7280;
+  --shadow-lg:     0 24px 60px -20px rgba(10,20,32,0.35);
+  --shadow-md:     0 8px 24px -12px rgba(10,20,32,0.25);
+
+  /* טיפוגרפיה */
+  --font-display:  'Bebas Neue', 'Anton', 'Frank Ruhl Libre', Impact, sans-serif;
+  --font-numeric:  'Anton', 'Bebas Neue', monospace;
+  --font-body:     'Heebo', system-ui, sans-serif;
+  --font-editorial:'Frank Ruhl Libre', 'Georgia', serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  background: var(--paper);
+  color: var(--ink);
+  font-feature-settings: 'kern' 1, 'liga' 1;
+  -webkit-font-smoothing: antialiased;
+  direction: rtl;
+
+  /* טקסטורת רקע - גרעין דק מאוד שמדמה דף נייר */
+  background-image:
+    radial-gradient(circle at 15% 50%, rgba(230,181,74,0.04), transparent 50%),
+    radial-gradient(circle at 85% 30%, rgba(193,39,45,0.04), transparent 50%),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0px, transparent 3px,
+      rgba(10,20,32,0.01) 3px, rgba(10,20,32,0.01) 4px
+    );
+  min-height: 100vh;
+}
+
+button { font-family: inherit; cursor: pointer; }
+input, select, textarea { font-family: inherit; }
+a { color: inherit; text-decoration: none; }
+
+/* ─────────── טיפוגרפיה ─────────── */
+.display {
+  font-family: var(--font-display);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-weight: 400;
+  line-height: 0.95;
+}
+
+.numeric {
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+}
+
+.editorial {
+  font-family: var(--font-editorial);
+  font-weight: 500;
+}
+
+h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
+
+/* ─────────── Header ─────────── */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--ink);
+  color: var(--paper);
+  border-bottom: 4px solid var(--gold);
+  box-shadow: var(--shadow-md);
+}
+
+.app-header::after {
+  content: '';
+  display: block;
+  height: 4px;
+  background:
+    linear-gradient(90deg,
+      var(--crimson) 0%, var(--crimson) 33%,
+      var(--paper) 33%, var(--paper) 66%,
+      var(--pitch) 66%, var(--pitch) 100%);
+}
+
+.header-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-display);
+  font-size: 28px;
+  letter-spacing: 0.04em;
+}
+
+.brand-trophy {
+  width: 36px; height: 36px;
+  display: grid; place-items: center;
+  background: var(--gold);
+  color: var(--ink);
+  border-radius: 50%;
+  font-size: 22px;
+  box-shadow: 0 0 0 2px var(--ink), 0 0 0 4px var(--gold);
+  transform: rotate(-6deg);
+}
+
+.brand-sub {
+  font-family: var(--font-body);
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  color: var(--gold);
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.nav {
+  display: flex;
+  gap: 4px;
+  margin-inline-start: auto;
+  align-items: center;
+}
+
+.nav-link {
+  font-family: var(--font-display);
+  font-size: 18px;
+  letter-spacing: 0.04em;
+  padding: 10px 16px;
+  color: rgba(245,240,230,0.7);
+  border-radius: 2px;
+  transition: all .2s;
+  position: relative;
+}
+.nav-link:hover { color: var(--paper); background: rgba(255,255,255,0.05); }
+.nav-link.active { color: var(--gold); }
+.nav-link.active::after {
+  content: '';
+  position: absolute;
+  inset: auto 16px -6px 16px;
+  height: 3px;
+  background: var(--gold);
+}
+
+.user-chip {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 14px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 50px;
+  font-size: 14px;
+}
+
+.btn-logout {
+  background: transparent;
+  border: 1px solid rgba(245,240,230,0.3);
+  color: var(--paper);
+  padding: 6px 14px;
+  border-radius: 50px;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: all .2s;
+}
+.btn-logout:hover { background: var(--crimson); border-color: var(--crimson); }
+
+/* ─────────── Page Layout ─────────── */
+.page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 32px 24px 80px;
+}
+
+.page-title {
+  font-family: var(--font-display);
+  font-size: clamp(48px, 7vw, 92px);
+  line-height: 0.9;
+  margin: 0 0 8px;
+  letter-spacing: 0.01em;
+}
+.page-title .accent { color: var(--crimson); }
+.page-subtitle {
+  font-family: var(--font-editorial);
+  font-style: italic;
+  font-size: 18px;
+  color: var(--muted);
+  margin-bottom: 32px;
+  padding-block-end: 16px;
+  border-bottom: 1px solid var(--line-bold);
+}
+
+/* Section divider במגזין סטייל */
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 40px 0 24px;
+}
+.section-divider::before, .section-divider::after {
+  content: '';
+  flex: 1;
+  height: 2px;
+  background: linear-gradient(to var(--dir, left), var(--ink) 0%, transparent 100%);
+}
+.section-divider h2 {
+  font-family: var(--font-display);
+  font-size: 32px;
+  margin: 0;
+  letter-spacing: 0.05em;
+}
+.section-divider .badge {
+  background: var(--ink);
+  color: var(--gold);
+  padding: 6px 14px;
+  font-family: var(--font-display);
+  font-size: 14px;
+  letter-spacing: 0.2em;
+}
+
+/* ─────────── דגלים ─────────── */
+.flag {
+  display: inline-block;
+  background-size: cover;
+  background-position: center;
+  background-color: var(--paper-dim);
+  border-radius: 2px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.15), inset 0 0 0 1px rgba(0,0,0,0.08);
+  vertical-align: middle;
+}
+.flag-sm { width: 24px; height: 18px; }
+.flag-md { width: 40px; height: 30px; }
+.flag-lg { width: 64px; height: 48px; }
+.flag-xl { width: 96px; height: 72px; }
+
+/* ─────────── כרטיסי משחק ─────────── */
+.match-card {
+  background: var(--paper-pure);
+  border: 1px solid var(--line);
+  border-inline-start: 4px solid var(--ink);
+  padding: 18px 20px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 16px;
+  align-items: center;
+  transition: all .2s;
+  position: relative;
+}
+.match-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-inline-start-color: var(--gold);
+}
+.match-card.finished { border-inline-start-color: var(--pitch); }
+.match-card.live { border-inline-start-color: var(--crimson); }
+.match-card.live::before {
+  content: 'LIVE';
+  position: absolute;
+  top: 8px; inset-inline-start: 8px;
+  background: var(--crimson);
+  color: var(--paper);
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  padding: 2px 8px;
+  border-radius: 2px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.match-team {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+}
+.match-team.home,
+.match-team.away {
+  justify-content: center;
+}
+.match-team.home {
+  text-align: start;
+  flex-direction: row-reverse;
+}
+.match-team.away {
+  text-align: start;
+}
+.match-team .name {
+  font-weight: 700;
+  font-size: 16px;
+  max-width: calc(100% - 72px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.match-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 100px;
+  padding: 0 12px;
+}
+.match-time {
+  font-family: var(--font-display);
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+.match-score {
+  font-family: var(--font-numeric);
+  font-size: 42px;
+  line-height: 1;
+  color: var(--ink);
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+.match-score .sep { color: var(--muted); font-size: 28px; }
+.match-vs {
+  font-family: var(--font-display);
+  font-size: 24px;
+  color: var(--gold-deep);
+  letter-spacing: 0.1em;
+}
+.match-status {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.match-venue {
+  grid-column: 1 / -1;
+  font-family: var(--font-editorial);
+  font-style: italic;
+  font-size: 12px;
+  color: var(--muted);
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+  text-align: center;
+}
+
+/* ─────────── טופס ניחוש ─────────── */
+.prediction-row {
+  background: var(--paper-pure);
+  border: 1px solid var(--line);
+  margin-bottom: 12px;
+  padding: 14px 20px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 12px;
+  align-items: center;
+  border-inline-start: 4px solid var(--gold);
+}
+.prediction-row.locked { opacity: 0.6; border-inline-start-color: var(--muted); }
+.prediction-row.scored { background: linear-gradient(to inline-end, rgba(45,110,62,0.05), transparent); }
+
+.score-input {
+  width: 56px;
+  height: 56px;
+  text-align: center;
+  font-family: var(--font-numeric);
+  font-size: 32px;
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  border-radius: 4px;
+  outline: none;
+  transition: all .15s;
+  -moz-appearance: textfield;
+}
+.score-input:focus {
+  border-color: var(--gold);
+  background: var(--paper-pure);
+  box-shadow: 0 0 0 3px rgba(230,181,74,0.25);
+}
+.score-input::-webkit-outer-spin-button,
+.score-input::-webkit-inner-spin-button {
+  -webkit-appearance: none; margin: 0;
+}
+.score-input:disabled { background: var(--paper-dim); cursor: not-allowed; }
+
+.scores-block {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 0 16px;
+}
+.scores-block .dash {
+  font-family: var(--font-numeric);
+  font-size: 32px;
+  color: var(--muted);
+}
+
+.points-pill {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--gold);
+  margin-inline-start: 8px;
+}
+.points-pill.zero { background: var(--paper-dim); color: var(--muted); }
+.points-pill.high { background: var(--pitch); color: var(--paper); }
+.points-pill.exact { background: var(--gold); color: var(--ink); }
+
+/* ─────────── טבלת בית ─────────── */
+.group-card {
+  background: var(--paper-pure);
+  border: 1px solid var(--line);
+  padding: 18px;
+  margin-bottom: 18px;
+  box-shadow: var(--shadow-md);
+}
+.group-card-head {
+  display: flex; align-items: baseline; gap: 12px;
+  border-bottom: 3px solid var(--ink);
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+}
+.group-card-head .label {
+  font-family: var(--font-display);
+  font-size: 14px;
+  color: var(--muted);
+  letter-spacing: 0.2em;
+}
+.group-card-head .letter {
+  font-family: var(--font-display);
+  font-size: 48px;
+  line-height: 1;
+  color: var(--crimson);
+}
+
+.standings-table { width: 100%; border-collapse: collapse; }
+.standings-table th, .standings-table td {
+  padding: 8px 6px;
+  font-size: 13px;
+  text-align: center;
+}
+.standings-table th {
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  border-bottom: 1px solid var(--line);
+}
+.standings-table td { border-bottom: 1px solid var(--line); }
+.standings-table .team-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: start;
+  font-weight: 500;
+}
+.standings-table tr:nth-child(1) td:first-child,
+.standings-table tr:nth-child(2) td:first-child {
+  border-inline-start: 3px solid var(--pitch);
+}
+.standings-table tr:nth-child(3) td:first-child {
+  border-inline-start: 3px solid var(--gold);
+}
+.standings-table .pts { font-family: var(--font-numeric); font-size: 18px; }
+
+/* ─────────── טבלת מצטיינים ─────────── */
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--paper-pure);
+  box-shadow: var(--shadow-md);
+}
+.leaderboard-table th {
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 0.15em;
+  padding: 14px 16px;
+  text-align: start;
+}
+.leaderboard-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  font-size: 15px;
+}
+.leaderboard-table tr.top-1 td {
+  background: linear-gradient(to inline-end, rgba(230,181,74,0.18), transparent);
+}
+.leaderboard-table tr.top-2 td { background: linear-gradient(to inline-end, rgba(192,192,192,0.18), transparent); }
+.leaderboard-table tr.top-3 td { background: linear-gradient(to inline-end, rgba(205,127,50,0.18), transparent); }
+
+.rank-medal {
+  display: inline-grid;
+  place-items: center;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-size: 18px;
+  background: var(--paper-dim);
+  color: var(--ink);
+}
+.rank-medal.gold   { background: var(--gold); color: var(--ink); box-shadow: 0 0 0 2px var(--gold-deep); }
+.rank-medal.silver { background: #c9d1d9; color: var(--ink); }
+.rank-medal.bronze { background: #cd7f32; color: var(--paper); }
+
+.total-pts {
+  font-family: var(--font-numeric);
+  font-size: 32px;
+  color: var(--crimson);
+}
+
+/* ─────────── כפתורים ─────────── */
+.btn {
+  font-family: var(--font-display);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 12px 24px;
+  border: none;
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: 2px;
+  font-size: 15px;
+  transition: all .2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn:hover { background: var(--crimson); transform: translateY(-1px); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.btn-gold { background: var(--gold); color: var(--ink); }
+.btn-gold:hover { background: var(--gold-deep); color: var(--paper); }
+
+.btn-pitch { background: var(--pitch); }
+.btn-pitch:hover { background: var(--pitch-deep); }
+
+.btn-outline {
+  background: transparent;
+  border: 2px solid var(--ink);
+  color: var(--ink);
+}
+.btn-outline:hover { background: var(--ink); color: var(--paper); transform: translateY(-1px); }
+
+.btn-sm { padding: 6px 14px; font-size: 12px; }
+
+/* ─────────── Forms ─────────── */
+.field { margin-bottom: 16px; }
+.field label {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 0.15em;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.field input, .field select, .field textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 2px solid var(--line-bold);
+  background: var(--paper-pure);
+  font-size: 15px;
+  border-radius: 2px;
+  outline: none;
+  transition: border-color .15s;
+}
+.field input:focus, .field select:focus { border-color: var(--gold); }
+
+/* ─────────── Login Page ─────────── */
+.login-page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: var(--ink);
+}
+@media (max-width: 900px) {
+  .login-page { grid-template-columns: 1fr; }
+  .login-hero { display: none; }
+}
+.login-hero {
+  background:
+    linear-gradient(135deg, rgba(10,20,32,0.85), rgba(193,39,45,0.6)),
+    radial-gradient(circle at 30% 70%, rgba(230,181,74,0.3) 0%, transparent 60%);
+  color: var(--paper);
+  padding: 60px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+}
+.login-hero::before {
+  content: '2026';
+  position: absolute;
+  bottom: -80px;
+  inset-inline-end: -40px;
+  font-family: var(--font-display);
+  font-size: 420px;
+  line-height: 1;
+  color: rgba(255,255,255,0.04);
+  letter-spacing: -0.05em;
+  pointer-events: none;
+}
+.login-hero h1 {
+  font-family: var(--font-display);
+  font-size: 96px;
+  line-height: 0.9;
+  margin: 0;
+  position: relative;
+}
+.login-hero h1 .accent { color: var(--gold); }
+.login-hero .tag {
+  font-family: var(--font-editorial);
+  font-size: 22px;
+  font-style: italic;
+  margin: 16px 0 0;
+  position: relative;
+  max-width: 480px;
+}
+.login-hero .meta {
+  position: relative;
+  border-top: 2px solid var(--gold);
+  padding-top: 16px;
+  display: flex;
+  gap: 32px;
+}
+.login-hero .meta div {
+  font-family: var(--font-display);
+  font-size: 14px;
+  letter-spacing: 0.15em;
+}
+.login-hero .meta div span {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: rgba(255,255,255,0.5);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.login-form-area {
+  background: var(--paper);
+  padding: 60px;
+  display: flex;
+  align-items: center;
+}
+.login-form {
+  width: 100%;
+  max-width: 380px;
+  margin: 0 auto;
+}
+.login-form h2 {
+  font-size: 56px;
+  margin: 0 0 4px;
+}
+.login-form .sub {
+  font-family: var(--font-editorial);
+  font-style: italic;
+  color: var(--muted);
+  margin-bottom: 32px;
+}
+.login-toggle {
+  display: flex;
+  border-bottom: 2px solid var(--line);
+  margin-bottom: 24px;
+}
+.login-toggle button {
+  flex: 1;
+  background: none;
+  border: none;
+  padding: 12px;
+  font-family: var(--font-display);
+  font-size: 16px;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  position: relative;
+}
+.login-toggle button.active { color: var(--ink); }
+.login-toggle button.active::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 -2px 0;
+  height: 3px;
+  background: var(--gold);
+}
+
+/* ─────────── Error / Success ─────────── */
+.alert {
+  padding: 12px 16px;
+  border-inline-start: 4px solid;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+.alert-error { background: rgba(193,39,45,0.08); border-color: var(--crimson); color: var(--crimson-deep); }
+.alert-success { background: rgba(45,110,62,0.08); border-color: var(--pitch); color: var(--pitch-deep); }
+
+/* ─────────── Stats Grid ─────────── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+.stat-card {
+  background: var(--paper-pure);
+  padding: 20px;
+  border-top: 4px solid var(--gold);
+  box-shadow: var(--shadow-md);
+}
+.stat-card .label {
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 0.15em;
+  color: var(--muted);
+}
+.stat-card .value {
+  font-family: var(--font-display);
+  font-size: 48px;
+  line-height: 1;
+  color: var(--ink);
+  margin-top: 8px;
+}
+
+/* ─────────── Bottom info ─────────── */
+.deadline-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--ink);
+  color: var(--gold);
+  padding: 8px 14px;
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  border-radius: 2px;
+}
+.deadline-badge.danger { background: var(--crimson); color: var(--paper); }
+.deadline-badge.ok { background: var(--pitch); color: var(--paper); }
+
+/* ─────────── Tabs ─────────── */
+.predictions-toolbar {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+.tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--ink);
+  margin-bottom: 0;
+  overflow-x: auto;
+}
+.tab {
+  background: transparent;
+  border: none;
+  font-family: var(--font-display);
+  font-size: 16px;
+  letter-spacing: 0.1em;
+  padding: 12px 20px;
+  color: var(--muted);
+  position: relative;
+  white-space: nowrap;
+}
+.tab.active { color: var(--ink); background: var(--gold); }
+.tab:hover:not(.active) { color: var(--ink); background: var(--paper-dim); }
+.predictions-save-all {
+  min-width: 160px;
+  justify-content: center;
+}
+
+/* ─────────── Responsive ─────────── */
+@media (max-width: 700px) {
+  .page { padding: 20px 14px 60px; }
+  .header-inner { flex-wrap: wrap; gap: 12px; padding: 12px 14px; }
+  .nav { width: 100%; overflow-x: auto; }
+  .nav-link { font-size: 14px; padding: 6px 10px; }
+  .match-card { grid-template-columns: 1fr; gap: 8px; text-align: center; }
+  .match-team.home, .match-team.away {
+    justify-content: center !important;
+    flex-direction: row !important;
+    text-align: center !important;
+  }
+  .prediction-row { grid-template-columns: 1fr; gap: 6px; text-align: center; }
+  .scores-block { justify-content: center; }
+  .login-hero h1 { font-size: 56px; }
+  .login-form-area { padding: 30px 20px; }
+  .login-form h2 { font-size: 40px; }
+  .predictions-toolbar { gap: 10px; }
+  .predictions-save-all { width: 100%; }
+}
+
+/* ─────────── אנימציית טעינה ─────────── */
+.spinner {
+  display: inline-block;
+  width: 22px; height: 22px;
+  border: 3px solid var(--line);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loading-page {
+  min-height: 60vh;
+  display: grid; place-items: center;
+  font-family: var(--font-display);
+  font-size: 24px;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+
+/* ─────────── Trophy banner ─────────── */
+.trophy-banner {
+  background: var(--ink);
+  color: var(--paper);
+  padding: 32px;
+  margin-bottom: 28px;
+  position: relative;
+  overflow: hidden;
+}
+.trophy-banner::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  width: 40%;
+  background:
+    radial-gradient(circle at top right, rgba(230,181,74,0.3), transparent 60%),
+    repeating-linear-gradient(45deg, rgba(230,181,74,0.08) 0 12px, transparent 12px 24px);
+  pointer-events: none;
+}
+.trophy-banner h2 {
+  font-size: 48px;
+  margin: 0 0 8px;
+  position: relative;
+}
+.trophy-banner p {
+  font-family: var(--font-editorial);
+  font-style: italic;
+  margin: 0;
+  position: relative;
+  font-size: 18px;
+  color: rgba(245,240,230,0.85);
+  max-width: 600px;
+}
+
+/* ─────────── Mini schedule ─────────── */
+.day-label {
+  display: inline-block;
+  background: var(--ink);
+  color: var(--gold);
+  font-family: var(--font-display);
+  font-size: 16px;
+  letter-spacing: 0.15em;
+  padding: 4px 12px;
+  margin: 24px 0 12px;
+}

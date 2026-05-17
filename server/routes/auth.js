@@ -1,0 +1,77 @@
+// נתיבי אימות (async/MySQL)
+const express = require('express');
+const bcrypt = require('bcryptjs');
+const db = require('../db');
+const { auth, signToken } = require('../middleware/auth');
+
+const router = express.Router();
+
+// helper - אל תשלח החוצה password_hash
+function sanitize(user) {
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    isAdmin: !!user.is_admin,
+    createdAt: user.created_at
+  };
+}
+
+// הרשמה
+router.post('/register', async (req, res) => {
+  try {
+    const { email, name, password } = req.body || {};
+    if (!email || !name || !password) {
+      return res.status(400).json({ error: 'כל השדות נדרשים' });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'הסיסמה חייבת להכיל לפחות 6 תווים' });
+    }
+    const lower = email.toLowerCase();
+    const exists = await db.one('SELECT id FROM users WHERE email = ?', [lower]);
+    if (exists) return res.status(409).json({ error: 'אימייל זה כבר קיים במערכת' });
+
+    const hash = bcrypt.hashSync(password, 10);
+    const r = await db.run(
+      `INSERT INTO users (email, name, password_hash, is_admin) VALUES (?, ?, ?, 0)`,
+      [lower, name.trim(), hash]
+    );
+    const user = await db.one('SELECT * FROM users WHERE id = ?', [r.insertId]);
+    const token = signToken(user);
+    res.json({ token, user: sanitize(user) });
+  } catch (e) {
+    console.error('register:', e);
+    res.status(500).json({ error: 'שגיאת שרת בהרשמה' });
+  }
+});
+
+// כניסה
+router.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body || {};
+    if (!email || !password) return res.status(400).json({ error: 'אימייל וסיסמה נדרשים' });
+    const user = await db.one('SELECT * FROM users WHERE email = ?', [email.toLowerCase()]);
+    if (!user || !bcrypt.compareSync(password, user.password_hash)) {
+      return res.status(401).json({ error: 'אימייל או סיסמה שגויים' });
+    }
+    const token = signToken(user);
+    res.json({ token, user: sanitize(user) });
+  } catch (e) {
+    console.error('login:', e);
+    res.status(500).json({ error: 'שגיאת שרת בכניסה' });
+  }
+});
+
+// פרטי המשתמש המחובר
+router.get('/me', auth(), async (req, res) => {
+  try {
+    const user = await db.one('SELECT * FROM users WHERE id = ?', [req.user.id]);
+    if (!user) return res.status(404).json({ error: 'משתמש לא נמצא' });
+    res.json({ user: sanitize(user) });
+  } catch (e) {
+    console.error('me:', e);
+    res.status(500).json({ error: 'שגיאת שרת' });
+  }
+});
+
+module.exports = router;

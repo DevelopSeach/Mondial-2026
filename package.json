@@ -1,0 +1,26 @@
+{
+  "name": "mondial2026",
+  "version": "2.0.0",
+  "private": true,
+  "description": "מערכת ניחושי מונדיאל 2026 לחברה - React + Node + MySQL 8 (root workspace)",
+  "scripts": {
+    "install:all":  "npm install && npm --prefix server install && npm --prefix client install",
+    "db:create":    "npm --prefix server run db:create",
+    "db:init":      "npm --prefix server run db:init",
+    "db:seed":      "npm --prefix server run db:seed",
+    "db:setup":     "npm --prefix server run db:setup",
+    "db:reset":     "npm --prefix server run db:reset",
+    "setup":        "npm run install:all && npm run db:setup",
+    "server":       "npm --prefix server run start",
+    "server:dev":   "npm --prefix server run dev",
+    "client":       "npm --prefix client run dev",
+    "client:build": "npm --prefix client run build",
+    "dev":          "concurrently --names \"SERVER,CLIENT\" --prefix-colors \"blue.bold,magenta.bold\" --kill-others-on-fail \"npm:server:dev\" \"npm:client\"",
+    "prod":         "npm run client:build && npm run server",
+    "start":        "npm run dev",
+    "all":          "npm run setup && npm run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1"
+  }
+}

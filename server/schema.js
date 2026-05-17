@@ -1,0 +1,78 @@
+// סכמת מסד הנתונים של מונדיאל 2026 - MySQL 8 / utf8mb4
+// מופעלת על-ידי `npm run db:init` (יוצר טבלאות אם לא קיימות)
+
+module.exports = [
+
+  // ────────── משתמשים ──────────
+  `CREATE TABLE IF NOT EXISTS users (
+    id            INT             AUTO_INCREMENT PRIMARY KEY,
+    email         VARCHAR(190)    NOT NULL UNIQUE,
+    name          VARCHAR(120)    NOT NULL,
+    password_hash VARCHAR(120)    NOT NULL,
+    is_admin      TINYINT(1)      NOT NULL DEFAULT 0,
+    created_at    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  // ────────── קבוצות ──────────
+  // code הוא קוד flagcdn (לדוגמה: 'br', 'gb-sct')
+  `CREATE TABLE IF NOT EXISTS teams (
+    code          VARCHAR(10)     NOT NULL PRIMARY KEY,
+    name_en       VARCHAR(80)     NOT NULL,
+    name_he       VARCHAR(80)     NOT NULL,
+    group_letter  CHAR(1)         NOT NULL,
+    INDEX idx_teams_group (group_letter)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  // ────────── משחקים ──────────
+  // status: scheduled / live / finished
+  `CREATE TABLE IF NOT EXISTS matches (
+    id            INT             NOT NULL PRIMARY KEY,
+    stage         VARCHAR(40)     NOT NULL DEFAULT 'group',
+    group_letter  CHAR(1)         NULL,
+    home_code     VARCHAR(10)     NOT NULL,
+    away_code     VARCHAR(10)     NOT NULL,
+    kickoff       DATETIME        NOT NULL,
+    venue         VARCHAR(160)    NULL,
+    home_score    INT             NULL,
+    away_score    INT             NULL,
+    status        VARCHAR(20)     NOT NULL DEFAULT 'scheduled',
+    updated_at    DATETIME        NULL,
+    INDEX idx_matches_kickoff (kickoff),
+    INDEX idx_matches_status (status),
+    CONSTRAINT fk_matches_home FOREIGN KEY (home_code) REFERENCES teams(code),
+    CONSTRAINT fk_matches_away FOREIGN KEY (away_code) REFERENCES teams(code)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  // ────────── ניחושים ──────────
+  `CREATE TABLE IF NOT EXISTS predictions (
+    id            INT             AUTO_INCREMENT PRIMARY KEY,
+    user_id       INT             NOT NULL,
+    match_id      INT             NOT NULL,
+    home_score    INT             NOT NULL,
+    away_score    INT             NOT NULL,
+    points        INT             NOT NULL DEFAULT 0,
+    submitted_at  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_predictions_user_match (user_id, match_id),
+    INDEX idx_predictions_user (user_id),
+    INDEX idx_predictions_match (match_id),
+    CONSTRAINT fk_predictions_user  FOREIGN KEY (user_id)  REFERENCES users(id)   ON DELETE CASCADE,
+    CONSTRAINT fk_predictions_match FOREIGN KEY (match_id) REFERENCES matches(id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  // ────────── ניחושים מיוחדים (אלופה / סגן / מלך) ──────────
+  `CREATE TABLE IF NOT EXISTS special_predictions (
+    user_id        INT            NOT NULL PRIMARY KEY,
+    champion_code  VARCHAR(10)    NULL,
+    runner_up_code VARCHAR(10)    NULL,
+    top_scorer     VARCHAR(120)   NULL,
+    submitted_at   DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_special_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  // ────────── הגדרות מערכת ──────────
+  `CREATE TABLE IF NOT EXISTS settings (
+    \`key\`   VARCHAR(80)    NOT NULL PRIMARY KEY,
+    \`value\` VARCHAR(400)   NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+
+];
