@@ -283,6 +283,8 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
   max-width: 1280px;
   margin: 0 auto;
   padding: 32px 24px 80px;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 .page-title {
@@ -589,6 +591,23 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
   border-collapse: collapse;
   background: var(--paper-pure);
   box-shadow: var(--shadow-md);
+}
+
+.table-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.table-wrap .leaderboard-table,
+.table-wrap .standings-table {
+  min-width: 680px;
+}
+
+.groups-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
 }
 .leaderboard-table th {
   background: var(--ink);
@@ -921,6 +940,9 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
   .login-form h2 { font-size: 40px; }
   .predictions-toolbar { gap: 10px; }
   .predictions-save-all { width: 100%; }
+  .groups-grid { grid-template-columns: 1fr; }
+  .table-wrap .leaderboard-table,
+  .table-wrap .standings-table { min-width: 620px; }
 }
 
 /* ─────────── אנימציית טעינה ─────────── */
