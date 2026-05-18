@@ -136,7 +136,9 @@ router.post('/profile', auth(), upload.single('profile_image'), async (req, res)
         .replace(/[^a-z0-9._-]/g, '_');
       const ext = path.extname(req.file.originalname || '').toLowerCase() || '.jpg';
       const safeExt = ['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(ext) ? ext : '.jpg';
-      const baseDir = path.join(__dirname, '..', '..', 'data', 'profile_images', username);
+      const rootDir = path.join(__dirname, '..', '..', 'data', 'profile_images');
+      const baseDir = path.join(rootDir, username);
+      await fs.promises.mkdir(rootDir, { recursive: true });
       await fs.promises.mkdir(baseDir, { recursive: true });
       const fileName = `${Date.now()}${safeExt}`;
       const fullPath = path.join(baseDir, fileName);
@@ -152,7 +154,10 @@ router.post('/profile', auth(), upload.single('profile_image'), async (req, res)
     res.json({ ok: true, user: sanitize(updatedUser) });
   } catch (e) {
     console.error('profile-update:', e);
-    res.status(500).json({ error: `שגיאת שרת: ${e.message}` });
+    const msg = e.code === 'EACCES'
+      ? `אין הרשאת כתיבה לתיקיית התמונות בשרת (${e.path || 'data/profile_images'})`
+      : e.message;
+    res.status(500).json({ error: `שגיאת שרת: ${msg}` });
   }
 });
 
