@@ -13,8 +13,6 @@ export default function Header() {
   const [msg, setMsg] = useState('');
   const [previewUrl, setPreviewUrl] = useState('');
 
-  if (!user) return null;
-
   const doLogout = () => { logout(); nav('/login'); };
   const openProfile = () => {
     setPhone(user?.phone_number || '');
@@ -46,6 +44,8 @@ export default function Header() {
     setPreviewUrl(url);
     return () => URL.revokeObjectURL(url);
   }, [imageFile]);
+
+  if (!user) return null;
 
   return (
     <>
