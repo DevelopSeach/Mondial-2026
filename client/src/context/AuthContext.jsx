@@ -36,8 +36,11 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
-  const updateProfile = async ({ phone_number, profile_image_url }) => {
-    const { data } = await api.post('/auth/profile', { phone_number, profile_image_url });
+  const updateProfile = async ({ phone_number, profile_image_file }) => {
+    const form = new FormData();
+    form.append('phone_number', phone_number || '');
+    if (profile_image_file) form.append('profile_image', profile_image_file);
+    const { data } = await api.post('/auth/profile', form);
     if (data?.user) setUser(data.user);
     return data?.user || null;
   };

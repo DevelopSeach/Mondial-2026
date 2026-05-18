@@ -7,7 +7,8 @@ export default function Header() {
   const nav = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
   const [phone, setPhone] = useState(user?.phone_number || '');
-  const [imageUrl, setImageUrl] = useState(user?.profile_image_url || '');
+  const [imageFile, setImageFile] = useState(null);
+  const [imageName, setImageName] = useState('');
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
 
@@ -16,7 +17,8 @@ export default function Header() {
   const doLogout = () => { logout(); nav('/login'); };
   const openProfile = () => {
     setPhone(user?.phone_number || '');
-    setImageUrl(user?.profile_image_url || '');
+    setImageFile(null);
+    setImageName('');
     setMsg('');
     setProfileOpen(true);
   };
@@ -24,7 +26,7 @@ export default function Header() {
     setSaving(true);
     setMsg('');
     try {
-      await updateProfile({ phone_number: phone, profile_image_url: imageUrl });
+      await updateProfile({ phone_number: phone, profile_image_file: imageFile });
       setMsg('נשמר בהצלחה');
       setTimeout(() => setProfileOpen(false), 500);
     } catch (e) {
@@ -83,8 +85,17 @@ export default function Header() {
               <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="050-0000000" />
             </div>
             <div className="field">
-              <label>קישור לתמונת פרופיל</label>
-              <input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://..." />
+              <label>תמונת פרופיל</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const f = e.target.files?.[0] || null;
+                  setImageFile(f);
+                  setImageName(f?.name || '');
+                }}
+              />
+              {imageName && <div style={{fontSize:12, color:'var(--muted)', marginTop:6}}>נבחר: {imageName}</div>}
             </div>
             {msg && <div className={`alert ${msg.includes('שגיאה') ? 'alert-error' : 'alert-success'}`}>{msg}</div>}
             <button type="button" className="btn btn-gold" onClick={saveProfile} disabled={saving}>

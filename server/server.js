@@ -12,6 +12,7 @@ const { runDailyUpdate } = require('./services/scraper');
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
+app.use('/data', express.static(path.join(__dirname, '..', 'data')));
 
 // נתיבי API
 app.use('/api/auth',         require('./routes/auth'));

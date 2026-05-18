@@ -1,10 +1,17 @@
 // נתיבי אימות (async/MySQL)
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
 const db = require('../db');
 const { auth, signToken } = require('../middleware/auth');
 
 const router = express.Router();
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }
+});
 
 // helper - אל תשלח החוצה password_hash
 function sanitize(user) {
@@ -101,19 +108,34 @@ router.post('/change-password', auth(), async (req, res) => {
 });
 
 // עדכון פרופיל בסיסי (טלפון + תמונת פרופיל)
-router.post('/profile', auth(), async (req, res) => {
+router.post('/profile', auth(), upload.single('profile_image'), async (req, res) => {
   try {
     const phone = String(req.body?.phone_number || '').trim();
-    const image = String(req.body?.profile_image_url || '').trim();
-    if (image && !/^https?:\/\/.+/i.test(image)) {
-      return res.status(400).json({ error: 'קישור תמונה חייב להתחיל ב-http/https' });
+    const user = await db.one('SELECT * FROM users WHERE id = ?', [req.user.id]);
+    if (!user) return res.status(404).json({ error: 'משתמש לא נמצא' });
+
+    let profileImageUrl = user.profile_image_url || null;
+    if (req.file) {
+      const username = String(user.email || `user-${user.id}`)
+        .split('@')[0]
+        .toLowerCase()
+        .replace(/[^a-z0-9._-]/g, '_');
+      const ext = path.extname(req.file.originalname || '').toLowerCase() || '.jpg';
+      const safeExt = ['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(ext) ? ext : '.jpg';
+      const baseDir = path.join(__dirname, '..', '..', 'data', 'profile_images', username);
+      await fs.promises.mkdir(baseDir, { recursive: true });
+      const fileName = `${Date.now()}${safeExt}`;
+      const fullPath = path.join(baseDir, fileName);
+      await fs.promises.writeFile(fullPath, req.file.buffer);
+      profileImageUrl = `/data/profile_images/${username}/${fileName}`;
     }
+
     await db.run(
       'UPDATE users SET phone_number = ?, profile_image_url = ? WHERE id = ?',
-      [phone || null, image || null, req.user.id]
+      [phone || null, profileImageUrl, req.user.id]
     );
-    const user = await db.one('SELECT * FROM users WHERE id = ?', [req.user.id]);
-    res.json({ ok: true, user: sanitize(user) });
+    const updatedUser = await db.one('SELECT * FROM users WHERE id = ?', [req.user.id]);
+    res.json({ ok: true, user: sanitize(updatedUser) });
   } catch (e) {
     console.error('profile-update:', e);
     res.status(500).json({ error: 'שגיאת שרת' });

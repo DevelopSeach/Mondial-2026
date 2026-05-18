@@ -69,6 +69,15 @@ export default function Home() {
     }
   };
 
+  const scoreTone = (side) => {
+    const home = Number(draft.home);
+    const away = Number(draft.away);
+    if (!Number.isInteger(home) || !Number.isInteger(away)) return '';
+    if (home === away) return 'score-equal';
+    if (side === 'home') return home > away ? 'score-high' : 'score-low';
+    return away > home ? 'score-high' : 'score-low';
+  };
+
   return (
     <main className="page">
       <div className="trophy-banner">
@@ -140,7 +149,7 @@ export default function Home() {
                       type="number"
                       min={0}
                       max={30}
-                      className="score-input"
+                      className={`score-input ${scoreTone('home')}`}
                       value={draft.home}
                       onChange={(e) => setDraft(prev => ({ ...prev, home: e.target.value === '' ? '' : Number(e.target.value) }))}
                     />
@@ -149,7 +158,7 @@ export default function Home() {
                       type="number"
                       min={0}
                       max={30}
-                      className="score-input"
+                      className={`score-input ${scoreTone('away')}`}
                       value={draft.away}
                       onChange={(e) => setDraft(prev => ({ ...prev, away: e.target.value === '' ? '' : Number(e.target.value) }))}
                     />
