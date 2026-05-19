@@ -143,6 +143,15 @@ router.post('/profile', auth(), upload.single('profile_image'), async (req, res)
       const fileName = `${Date.now()}${safeExt}`;
       const fullPath = path.join(baseDir, fileName);
       await fs.promises.writeFile(fullPath, req.file.buffer);
+
+      // keep only the newest profile image for this user
+      const files = await fs.promises.readdir(baseDir);
+      await Promise.all(
+        files
+          .filter((f) => f !== fileName)
+          .map((f) => fs.promises.unlink(path.join(baseDir, f)).catch(() => null))
+      );
+
       profileImageUrl = `/data/profile_images/${username}/${fileName}`;
     }
 

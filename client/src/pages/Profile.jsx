@@ -1,13 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import api, { errMsg } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 
 export default function Profile() {
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [busy, setBusy] = useState(false);
+  const [profileBusy, setProfileBusy] = useState(false);
+  const [profileImageFile, setProfileImageFile] = useState(null);
+  const [profilePreviewUrl, setProfilePreviewUrl] = useState('');
+  const [profileMsg, setProfileMsg] = useState('');
   const [err, setErr] = useState('');
   const [ok, setOk] = useState('');
 
@@ -36,6 +40,30 @@ export default function Profile() {
     }
   };
 
+  useEffect(() => {
+    if (!profileImageFile) {
+      setProfilePreviewUrl('');
+      return;
+    }
+    const url = URL.createObjectURL(profileImageFile);
+    setProfilePreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [profileImageFile]);
+
+  const saveProfileImage = async () => {
+    setProfileMsg('');
+    setProfileBusy(true);
+    try {
+      await updateProfile({ profile_image_file: profileImageFile, phone_number: user?.phone_number || '' });
+      setProfileMsg('תמונת הפרופיל נשמרה');
+      setProfileImageFile(null);
+    } catch (e) {
+      setProfileMsg(errMsg(e, 'שגיאה בשמירת תמונה'));
+    } finally {
+      setProfileBusy(false);
+    }
+  };
+
   return (
     <main className="page">
       <h1 className="page-title">
@@ -52,6 +80,42 @@ export default function Profile() {
             <InfoField label="טלפון" value={user?.phone_number || '—'} />
             <InfoField label="מחלקה" value={user?.department || '—'} />
           </div>
+        </div>
+
+        <div className="stat-card" style={{ borderTop: '4px solid var(--crimson)' }}>
+          <div className="label">תמונת פרופיל</div>
+          <p style={{ color: 'var(--muted)', marginTop: 8 }}>
+            ניתן להעלות תמונה חדשה ולהחליף את הקיימת.
+          </p>
+
+          <div style={{margin: '12px 0'}}>
+            {(profilePreviewUrl || user?.profile_image_url) ? (
+              <img
+                src={profilePreviewUrl || user?.profile_image_url}
+                alt="profile"
+                style={{ width: 90, height: 90, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--line-bold)' }}
+              />
+            ) : (
+              <div style={{ width: 90, height: 90, borderRadius: '50%', display: 'grid', placeItems: 'center', background: 'var(--paper-dim)', border: '2px solid var(--line-bold)' }}>
+                👤
+              </div>
+            )}
+          </div>
+
+          <div className="field" style={{maxWidth: 420}}>
+            <label>בחר תמונה חדשה</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setProfileImageFile(e.target.files?.[0] || null)}
+            />
+          </div>
+
+          {profileMsg && <div className={`alert ${profileMsg.includes('שגיאה') ? 'alert-error' : 'alert-success'}`}>{profileMsg}</div>}
+
+          <button className="btn btn-gold" type="button" onClick={saveProfileImage} disabled={profileBusy || !profileImageFile}>
+            {profileBusy ? <span className="spinner" /> : 'שמור תמונת פרופיל'}
+          </button>
         </div>
 
         <form className="stat-card" style={{ borderTop: '4px solid var(--gold)' }} onSubmit={submit}>
