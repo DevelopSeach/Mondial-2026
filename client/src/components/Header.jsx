@@ -51,18 +51,13 @@ export default function Header() {
     <>
       <header className="app-header">
       <div className="header-inner">
-        {user?.profile_image_url ? (
-          <img className="header-avatar" src={user.profile_image_url} alt={user.name} />
-        ) : (
-          <div className="header-avatar header-avatar-fallback">{(user?.name || '?').slice(0, 1)}</div>
-        )}
-        <div className="brand">
-          <img className="header-logo" src="/shiah-logo-white.png" alt="לוגו שיח" />
-          <span className="brand-trophy">🏆</span>
-          <div>
-            <div>מונדיאל 2026</div>
-            <div className="brand-sub">ניחושי חברת שיח</div>
-          </div>
+        <div className="header-right-brand">
+          <img className="header-logo-large" src="/shiah-logo-white.png" alt="לוגו שיח" />
+          {user?.profile_image_url ? (
+            <img className="header-avatar" src={user.profile_image_url} alt={user.name} />
+          ) : (
+            <div className="header-avatar header-avatar-fallback">{(user?.name || '?').slice(0, 1)}</div>
+          )}
         </div>
 
         <nav className="nav">

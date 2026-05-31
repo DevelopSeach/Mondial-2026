@@ -10,12 +10,32 @@ export default function Leaderboard() {
     api.get('/leaderboard').then(r => setRows(r.data));
   }, []);
 
+  const totalUsers = rows.length;
+  const activeUsers = rows.filter((r) => Number(r.num_predictions || 0) > 0).length;
+  const participantsPercent = totalUsers ? ((activeUsers / totalUsers) * 100) : 0;
+  const avgScore = totalUsers
+    ? (rows.reduce((sum, r) => sum + Number(r.total_points || 0), 0) / totalUsers)
+    : 0;
+
   return (
     <main className="page">
       <h1 className="page-title">
         טבלת <span className="accent">המצטיינים</span>
       </h1>
       <p className="page-subtitle">דירוג כל העובדים לפי נקודות שנצברו · מתעדכן אוטומטית עם כל משחק שמסתיים</p>
+
+      <div className="stats-grid" style={{ marginBottom: 20 }}>
+        <div className="stat-card">
+          <div className="label">אחוז משתתפים פעילים</div>
+          <div className="value">{participantsPercent.toFixed(1)}%</div>
+          <div style={{ color: 'var(--muted)', fontSize: 12 }}>{activeUsers} מתוך {totalUsers}</div>
+        </div>
+        <div className="stat-card">
+          <div className="label">ממוצע ציונים</div>
+          <div className="value">{avgScore.toFixed(1)}</div>
+          <div style={{ color: 'var(--muted)', fontSize: 12 }}>נקודות למשתתף</div>
+        </div>
+      </div>
 
       <div className="table-wrap">
         <table className="leaderboard-table">
