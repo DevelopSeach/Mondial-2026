@@ -46,7 +46,10 @@ export default function Leaderboard() {
                     ) : (
                       <div className="leaderboard-avatar leaderboard-avatar-fallback">{(r.name || '?').slice(0, 1)}</div>
                     )}
-                    <strong>{r.name}</strong>
+                    <div className="leaderboard-user-meta">
+                      <strong>{r.name}</strong>
+                      <span>{r.phone_number || '—'} · {r.email || '—'}</span>
+                    </div>
                   </div>
                   {r.id === user.id && <span style={{marginInlineStart: 8, color:'var(--gold-deep)', fontSize: 11, letterSpacing:'.15em'}}>· זה אני</span>}
                 </td>

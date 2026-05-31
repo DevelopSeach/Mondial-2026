@@ -57,6 +57,7 @@ export default function Header() {
           <div className="header-avatar header-avatar-fallback">{(user?.name || '?').slice(0, 1)}</div>
         )}
         <div className="brand">
+          <img className="header-logo" src="/shiah-logo-white.png" alt="לוגו שיח" />
           <span className="brand-trophy">🏆</span>
           <div>
             <div>מונדיאל 2026</div>

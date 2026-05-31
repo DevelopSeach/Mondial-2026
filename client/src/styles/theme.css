@@ -151,6 +151,12 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
   letter-spacing: 0.04em;
 }
 
+.header-logo {
+  height: 38px;
+  width: auto;
+  object-fit: contain;
+}
+
 .brand-trophy {
   width: 36px; height: 36px;
   display: grid; place-items: center;
@@ -673,6 +679,17 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
   gap: 8px;
 }
 
+.leaderboard-user-meta {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.leaderboard-user-meta span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .leaderboard-avatar {
   width: 28px;
   height: 28px;
@@ -756,6 +773,9 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
 @media (max-width: 900px) {
   .login-page { grid-template-columns: 1fr; }
   .login-hero { display: none; }
+  .header-logo {
+    height: 30px;
+  }
 }
 .login-hero {
   background:
