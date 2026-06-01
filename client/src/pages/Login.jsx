@@ -31,6 +31,9 @@ export default function Login() {
 
   return (
     <div className="login-page">
+      <div className="login-top-logo-wrap">
+        <img className="login-top-logo" src="/shiah-logo-white.png" alt="לוגו שיח" />
+      </div>
       <div className="login-hero">
         <div style={{position:'relative'}}>
           <div style={{fontFamily:'var(--font-display)', fontSize: 18, letterSpacing: '0.3em', color:'var(--gold)'}}>
