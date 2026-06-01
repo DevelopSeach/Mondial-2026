@@ -638,6 +638,15 @@ function MatchesTab() {
     }));
   };
 
+  const setRandomTestScore = (m) => {
+    const home = Math.floor(Math.random() * 5);
+    const away = Math.floor(Math.random() * 5);
+    setEditing((s) => ({
+      ...s,
+      [m.id]: { ...(s[m.id] || {}), home, away }
+    }));
+  };
+
   const save = async (m) => {
     const e = editing[m.id] || {};
     const h = e.home ?? m.home_score;
@@ -763,6 +772,7 @@ function MatchesTab() {
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: 6 }}>
+                      <button className="btn btn-sm btn-outline" onClick={() => setRandomTestScore(m)}>בדיקה</button>
                       <button className="btn btn-sm btn-pitch" onClick={() => save(m)}>שמור</button>
                       {m.status === 'finished' && (
                         <button className="btn btn-sm btn-outline" onClick={() => clear(m)}>אפס</button>
