@@ -15,7 +15,7 @@ export default function NewsTicker() {
 
   return (
     <div className="news-ticker" dir="rtl">
-      <div className="news-ticker-label">חדשות ספורט</div>
+      <div className="news-ticker-label">חדשות</div>
       <div className="news-ticker-track">
         <div className="news-ticker-content">
           {loopItems.map((item, index) => (

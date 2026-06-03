@@ -188,7 +188,7 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
   white-space: nowrap;
   direction: ltr;
   will-change: transform;
-  animation: ticker-move 30s linear infinite;
+  animation: ticker-move 15s linear infinite;
 }
 
 .news-ticker-item {
