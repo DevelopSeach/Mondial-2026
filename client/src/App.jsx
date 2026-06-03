@@ -15,8 +15,10 @@ import Profile from './pages/Profile';
 export default function App() {
   return (
     <>
-      <Header />
-      <NewsTicker />
+      <div className="app-topbar">
+        <Header />
+        <NewsTicker />
+      </div>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />

@@ -10,11 +10,12 @@ export default function Leaderboard() {
     api.get('/leaderboard').then(r => setRows(r.data));
   }, []);
 
-  const totalUsers = rows.length;
-  const activeUsers = rows.filter((r) => Number(r.num_predictions || 0) > 0).length;
+  const visibleRows = rows.filter((r) => Number(r.total_points || 0) > 3);
+  const totalUsers = visibleRows.length;
+  const activeUsers = visibleRows.filter((r) => Number(r.num_predictions || 0) > 0).length;
   const participantsPercent = totalUsers ? ((activeUsers / totalUsers) * 100) : 0;
   const avgScore = totalUsers
-    ? (rows.reduce((sum, r) => sum + Number(r.total_points || 0), 0) / totalUsers)
+    ? (visibleRows.reduce((sum, r) => sum + Number(r.total_points || 0), 0) / totalUsers)
     : 0;
 
   return (
@@ -50,7 +51,7 @@ export default function Leaderboard() {
             </tr>
           </thead>
           <tbody>
-            {rows.map(r => (
+            {visibleRows.map(r => (
               <tr key={r.id} className={
                 `${r.rank <= 3 ? `top-${r.rank}` : ''} ${r.id === user.id ? 'me' : ''}`
               } style={r.id === user.id ? { outline: '2px solid var(--gold)', outlineOffset: -2 } : {}}>
@@ -82,8 +83,8 @@ export default function Leaderboard() {
                 <td style={{textAlign:'end'}}><span className="total-pts">{r.total_points}</span></td>
               </tr>
             ))}
-            {rows.length === 0 && (
-              <tr><td colSpan={6} style={{textAlign:'center', color:'var(--muted)', padding:32}}>עדיין אין משתתפים. שתף את הלינק עם הצוות!</td></tr>
+            {visibleRows.length === 0 && (
+              <tr><td colSpan={6} style={{textAlign:'center', color:'var(--muted)', padding:32}}>עדיין אין משתתפים עם יותר מ-3 נקודות.</td></tr>
             )}
           </tbody>
         </table>
