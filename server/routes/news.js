@@ -7,6 +7,20 @@ const router = express.Router();
 
 let cache = { at: 0, items: [] };
 
+function ensureMinimumItems(items, minCount) {
+  if (!items.length) return items;
+
+  const filled = [...items];
+  let index = 0;
+
+  while (filled.length < minCount) {
+    filled.push(items[index % items.length]);
+    index += 1;
+  }
+
+  return filled.slice(0, minCount);
+}
+
 router.get('/sports', auth(false), async (req, res) => {
   try {
     const now = Date.now();
@@ -20,13 +34,15 @@ router.get('/sports', auth(false), async (req, res) => {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Mondial2026Bot/1.0)' }
     });
     const $ = cheerio.load(data, { xmlMode: true });
-    const items = $('item').toArray().slice(0, 12).map((item) => ({
+    const items = $('item').toArray().slice(0, 24).map((item) => ({
       title: $(item).find('title').text().trim(),
       link: $(item).find('link').text().trim()
     })).filter((item) => item.title && item.link);
 
-    cache = { at: now, items };
-    res.json(items);
+    const normalizedItems = ensureMinimumItems(items, 15);
+
+    cache = { at: now, items: normalizedItems };
+    res.json(normalizedItems);
   } catch (e) {
     console.error('news/sports:', e.message);
     res.json(cache.items || []);
