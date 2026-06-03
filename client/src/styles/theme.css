@@ -187,18 +187,17 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
   min-width: 100%;
   white-space: nowrap;
   direction: ltr;
+  contain: paint;
+  backface-visibility: hidden;
   will-change: transform;
   animation: ticker-move 15s linear infinite;
 }
 
-.news-ticker-item {
+.news-ticker-content a {
+  color: var(--paper);
   display: inline-flex;
   align-items: center;
   flex: 0 0 auto;
-}
-
-.news-ticker-content a {
-  color: var(--paper);
   font-size: 21px;
   line-height: 1.35;
   padding-inline: 12px;
@@ -206,7 +205,8 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
   direction: rtl;
 }
 
-.news-ticker-separator {
+.news-ticker-content a::after {
+  content: '⚽';
   color: var(--gold);
   font-size: 20px;
   padding-inline: 10px 18px;
@@ -214,10 +214,10 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
 
 @keyframes ticker-move {
   from {
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
   }
   to {
-    transform: translateX(-50%);
+    transform: translate3d(-50%, 0, 0);
   }
 }
 
@@ -1175,6 +1175,9 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
   .header-inner { flex-wrap: wrap; gap: 12px; padding: 12px 14px; }
   .nav { width: 100%; overflow-x: auto; }
   .nav-link { font-size: 14px; padding: 6px 10px; }
+  .news-ticker-content { animation-duration: 10s; }
+  .news-ticker-content a { font-size: 18px; }
+  .news-ticker-content a::after { padding-inline: 8px 14px; }
   .match-card { grid-template-columns: 1fr; gap: 8px; text-align: center; }
   .match-team.home, .match-team.away {
     justify-content: center !important;

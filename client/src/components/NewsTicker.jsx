@@ -19,12 +19,9 @@ export default function NewsTicker() {
       <div className="news-ticker-track">
         <div className="news-ticker-content">
           {loopItems.map((item, index) => (
-            <span className="news-ticker-item" key={`${item.link}-${index}`}>
-              <a href={item.link} target="_blank" rel="noreferrer">
-                {item.title}
-              </a>
-              <span className="news-ticker-separator" aria-hidden="true">⚽</span>
-            </span>
+            <a key={`${item.link}-${index}`} href={item.link} target="_blank" rel="noreferrer">
+              {item.title}
+            </a>
           ))}
         </div>
       </div>
