@@ -2,6 +2,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const { spawn } = require('child_process');
 const multer = require('multer');
 const XLSX = require('xlsx');
 const db = require('../db');
@@ -18,7 +19,7 @@ const {
 const router = express.Router();
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 }
+  limits: { fileSize: 25 * 1024 * 1024 }
 });
 
 function randomPassword(len = 10) {
@@ -96,6 +97,69 @@ async function writeDepartments(tx, departments) {
     ['departments', JSON.stringify(clean)]
   );
   return clean;
+}
+
+function mysqlCliBaseArgs() {
+  const args = ['--default-character-set=utf8mb4'];
+  if (db.config.socketPath) args.push(`--socket=${db.config.socketPath}`);
+  else {
+    args.push(`--host=${db.config.host || '127.0.0.1'}`);
+    args.push(`--port=${Number(db.config.port) || 3306}`);
+  }
+  args.push(`--user=${db.config.user}`);
+  return args;
+}
+
+function mysqlCliEnv() {
+  return {
+    ...process.env,
+    MYSQL_PWD: db.config.password || ''
+  };
+}
+
+async function listSiteTables() {
+  const rows = await db.query('SHOW TABLES');
+  return rows.map((row) => Object.values(row)[0]).filter(Boolean).sort();
+}
+
+function runCommandCapture(command, args) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      env: mysqlCliEnv(),
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+
+    const stdout = [];
+    const stderr = [];
+
+    child.stdout.on('data', (chunk) => stdout.push(chunk));
+    child.stderr.on('data', (chunk) => stderr.push(chunk));
+    child.on('error', reject);
+    child.on('close', (code) => {
+      if (code === 0) return resolve(Buffer.concat(stdout));
+      reject(new Error(Buffer.concat(stderr).toString('utf8') || `${command} exited with code ${code}`));
+    });
+  });
+}
+
+function runMysqlImport(sqlBuffer) {
+  return new Promise((resolve, reject) => {
+    const child = spawn('mysql', [...mysqlCliBaseArgs(), db.config.database], {
+      env: mysqlCliEnv(),
+      stdio: ['pipe', 'ignore', 'pipe']
+    });
+
+    const stderr = [];
+
+    child.stderr.on('data', (chunk) => stderr.push(chunk));
+    child.on('error', reject);
+    child.on('close', (code) => {
+      if (code === 0) return resolve();
+      reject(new Error(Buffer.concat(stderr).toString('utf8') || `mysql exited with code ${code}`));
+    });
+
+    child.stdin.end(sqlBuffer);
+  });
 }
 
 router.use(auth(), adminOnly);
@@ -301,6 +365,55 @@ router.post('/users/import', upload.single('file'), async (req, res) => {
   } catch (e) {
     console.error('admin/users/import:', e);
     res.status(500).json({ error: 'שגיאת שרת' });
+  }
+});
+
+// גיבוי SQL של כל טבלאות האתר
+router.get('/site-backup/export', async (req, res) => {
+  try {
+    const tables = await listSiteTables();
+    if (!tables.length) {
+      return res.status(400).json({ error: 'לא נמצאו טבלאות לגיבוי' });
+    }
+
+    const dump = await runCommandCapture('mysqldump', [
+      ...mysqlCliBaseArgs(),
+      '--single-transaction',
+      '--skip-comments',
+      '--add-drop-table',
+      '--skip-dump-date',
+      db.config.database,
+      ...tables
+    ]);
+    const dateTag = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+
+    res.setHeader('Content-Type', 'application/sql; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="site-backup-${dateTag}.sql"`);
+    return res.send(dump);
+  } catch (e) {
+    console.error('admin/site-backup/export:', e);
+    res.status(500).json({ error: 'ייצוא הגיבוי נכשל' });
+  }
+});
+
+// ייבוא SQL שמחליף את נתוני האתר
+router.post('/site-backup/import', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'יש לבחור קובץ SQL' });
+
+    const filename = String(req.file.originalname || '').toLowerCase();
+    if (!filename.endsWith('.sql')) {
+      return res.status(400).json({ error: 'יש להעלות קובץ SQL בלבד' });
+    }
+    if (!req.file.buffer?.length) {
+      return res.status(400).json({ error: 'הקובץ ריק' });
+    }
+
+    await runMysqlImport(req.file.buffer);
+    res.json({ ok: true, message: 'הגיבוי יובא והחליף את נתוני האתר' });
+  } catch (e) {
+    console.error('admin/site-backup/import:', e);
+    res.status(500).json({ error: 'ייבוא הגיבוי נכשל' });
   }
 });
 

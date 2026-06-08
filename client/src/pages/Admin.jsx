@@ -1042,12 +1042,57 @@ function ActionsTab() {
   const [err, setErr] = useState('');
   const [ok, setOk]   = useState('');
   const [busy, setBusy] = useState(null);
+  const [backupFile, setBackupFile] = useState(null);
 
   const run = async (op, url, label) => {
     setErr(''); setOk(''); setBusy(op);
     try {
       const r = await api.post(url);
       setOk(`${label}: ${JSON.stringify(r.data)}`);
+    } catch (e) {
+      setErr(errMsg(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const downloadBackup = async () => {
+    setErr(''); setOk(''); setBusy('backup-export');
+    try {
+      const { data, headers } = await api.get('/admin/site-backup/export', { responseType: 'blob' });
+      const blob = new Blob([data], { type: 'application/sql;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const disposition = headers['content-disposition'] || '';
+      const match = disposition.match(/filename="([^"]+)"/);
+      a.href = url;
+      a.download = match?.[1] || 'site-backup.sql';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setOk('קובץ הגיבוי הורד בהצלחה');
+    } catch (e) {
+      setErr(errMsg(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const importBackup = async () => {
+    if (!backupFile) {
+      setErr('יש לבחור קובץ SQL לייבוא');
+      return;
+    }
+    if (!confirm('ייבוא הגיבוי יחליף את כל נתוני האתר הנוכחיים. להמשיך?')) return;
+
+    setErr(''); setOk(''); setBusy('backup-import');
+    try {
+      const formData = new FormData();
+      formData.append('file', backupFile);
+      const { data } = await api.post('/admin/site-backup/import', formData);
+      setOk(data?.message || 'הגיבוי יובא בהצלחה');
+      setBackupFile(null);
     } catch (e) {
       setErr(errMsg(e));
     } finally {
@@ -1076,6 +1121,57 @@ function ActionsTab() {
         onClick={() => run('recalc', '/admin/recalculate', 'חישוב הושלם')}
         variant="gold"
       />
+
+      <div style={{
+        background: 'var(--paper-pure)',
+        border: '1px solid var(--line)',
+        borderRadius: 6,
+        padding: 24,
+        marginBottom: 16
+      }}>
+        <h3 style={{
+          marginTop: 0,
+          marginBottom: 8,
+          fontFamily: 'var(--font-display)',
+          fontSize: 22,
+          color: 'var(--ink)'
+        }}>גיבוי נתוני האתר</h3>
+        <p style={{ margin: 0, color: 'var(--muted)', fontSize: 14, lineHeight: 1.6 }}>
+          הורד SQL dump של כל טבלאות האתר או העלה קובץ SQL זהה כדי להחליף את נתוני המערכת הקיימים.
+        </p>
+
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 16 }}>
+          <button
+            className="btn btn-gold"
+            onClick={downloadBackup}
+            disabled={busy !== null}
+          >
+            {busy === 'backup-export' ? 'מייצא...' : 'הורד גיבוי SQL'}
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginTop: 18 }}>
+          <label className="btn btn-outline" style={{ cursor: 'pointer' }}>
+            בחר קובץ SQL לייבוא
+            <input
+              type="file"
+              accept=".sql,text/sql,application/sql"
+              style={{ display: 'none' }}
+              onChange={(e) => setBackupFile(e.target.files?.[0] || null)}
+            />
+          </label>
+          <button
+            className="btn btn-pitch"
+            onClick={importBackup}
+            disabled={busy !== null || !backupFile}
+          >
+            {busy === 'backup-import' ? 'מייבא...' : 'ייבא גיבוי והחלף נתונים'}
+          </button>
+          <span style={{ color: 'var(--muted)', fontSize: 13 }}>
+            {backupFile ? `קובץ נבחר: ${backupFile.name}` : 'לא נבחר קובץ'}
+          </span>
+        </div>
+      </div>
 
       <div style={{
         background: 'var(--paper-pure)',

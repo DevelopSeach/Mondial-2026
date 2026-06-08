@@ -2,6 +2,7 @@
 const express = require('express');
 const db = require('../db');
 const { auth } = require('../middleware/auth');
+const { seedPlayersIfEmpty } = require('../lib/players-catalog');
 
 const router = express.Router();
 
@@ -43,6 +44,7 @@ router.get('/my', auth(), async (req, res) => {
 // רשימת שחקנים לבחירה (מלך השערים)
 router.get('/players', auth(), async (req, res) => {
   try {
+    await seedPlayersIfEmpty();
     const rows = await db.query(`
       SELECT id, name_en, name_he, country_en, country_he, image_url, team_code
       FROM players
@@ -96,6 +98,7 @@ router.post('/match/:id', auth(), async (req, res) => {
 // ניחושים מיוחדים (אלופה, סגן, מלך)
 router.post('/special', auth(), async (req, res) => {
   try {
+    await seedPlayersIfEmpty();
     const { champion_code, runner_up_code, top_scorer, top_scorer_player_id } = req.body || {};
 
     // נעילה בזמן בעיטת הפתיחה של המונדיאל

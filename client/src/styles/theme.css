@@ -187,7 +187,6 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
   min-width: 100%;
   white-space: nowrap;
   direction: ltr;
-  contain: paint;
   backface-visibility: hidden;
   will-change: transform;
   animation: ticker-move 15s linear infinite;
@@ -1176,7 +1175,9 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
   .nav { width: 100%; overflow-x: auto; }
   .nav-link { font-size: 14px; padding: 6px 10px; }
   .news-ticker {
-    gap: 0;
+    display: grid;
+    grid-template-columns: 82px minmax(0, 1fr);
+    align-items: stretch;
     width: 100%;
     max-width: 100vw;
   }
@@ -1188,10 +1189,15 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
     text-align: center;
   }
   .news-ticker-track {
-    max-width: calc(100vw - 82px);
+    width: 100%;
+    max-width: none;
+    min-width: 0;
     min-height: 52px;
   }
-  .news-ticker-content { animation-duration: 10s; }
+  .news-ticker-content {
+    min-width: max-content;
+    animation-duration: 10s;
+  }
   .news-ticker-content a { font-size: 18px; }
   .news-ticker-content a::after { padding-inline: 8px 14px; }
   .match-card { grid-template-columns: 1fr; gap: 8px; text-align: center; }

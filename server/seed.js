@@ -8,6 +8,7 @@ const db = require('./db');
 const teams = require('./data/teams');
 const matches = require('./data/matches');
 const { DEFAULT_DEPARTMENTS } = require('./lib/departments');
+const { upsertPlayers, players } = require('./lib/players-catalog');
 
 // ממיר ISO UTC ('2026-06-11T19:00:00Z') לפורמט DATETIME של MySQL ('2026-06-11 19:00:00')
 function isoToMysql(iso) {
@@ -56,6 +57,12 @@ async function seed() {
     }
   });
   console.log(`   ✓ ${matches.length} משחקים נטענו`);
+
+  // ─────────── שחקנים ───────────
+  await db.tx(async (t) => {
+    await upsertPlayers(t);
+  });
+  console.log(`   ✓ ${players.length} שחקנים נטענו`);
 
   // ─────────── מנהל ראשוני ───────────
   const adminEmail = (process.env.ADMIN_EMAIL || 'admin@company.local').toLowerCase();
