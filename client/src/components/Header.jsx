@@ -1,11 +1,13 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from '../i18n/TranslationContext';
+import { useTheme } from '../context/ThemeContext';
 import LanguageSelector from './LanguageSelector';
 
 export default function Header() {
   const { user, logout } = useAuth();
   const { t } = useTranslation();
+  const { assets } = useTheme();
   const nav = useNavigate();
 
   const doLogout = () => { logout(); nav('/login'); };
@@ -20,7 +22,7 @@ export default function Header() {
         </div>
 
         <div className="header-right-brand">
-          <img className="header-logo-large" src="/shiah-logo-white.png" alt="Shiah logo" />
+          <img className="header-logo-large" src={assets.logo || '/shiah-logo-white.png'} alt="logo" />
           {user?.profile_image_url ? (
             <img className="header-avatar" src={user.profile_image_url} alt={user.name} />
           ) : (
@@ -34,6 +36,9 @@ export default function Header() {
           <NavLink to="/matches" className={({isActive}) => 'nav-link' + (isActive ? ' active' : '')}>{t('nav.matches')}</NavLink>
           <NavLink to="/schedule" className={({isActive}) => 'nav-link' + (isActive ? ' active' : '')}>{t('nav.schedule')}</NavLink>
           <NavLink to="/groups" className={({isActive}) => 'nav-link' + (isActive ? ' active' : '')}>{t('nav.groups')}</NavLink>
+          {user.canGuessGroups && (
+            <NavLink to="/guess-groups" className={({isActive}) => 'nav-link' + (isActive ? ' active' : '')}>{t('nav.guess_groups')}</NavLink>
+          )}
           <NavLink to="/leaderboard" className={({isActive}) => 'nav-link' + (isActive ? ' active' : '')}>{t('nav.leaderboard')}</NavLink>
           <NavLink to="/profile" className={({isActive}) => 'nav-link' + (isActive ? ' active' : '')}>{t('nav.profile')}</NavLink>
           {user.isAdmin && (

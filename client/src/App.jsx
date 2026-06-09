@@ -10,6 +10,8 @@ import Predictions from './pages/Predictions';
 import Matches from './pages/Matches';
 import SchedulePrizes from './pages/SchedulePrizes';
 import Groups from './pages/Groups';
+import GuessGroups from './pages/GuessGroups';
+import GuessGroupDetail from './pages/GuessGroupDetail';
 import Leaderboard from './pages/Leaderboard';
 import Admin from './pages/Admin';
 import Profile from './pages/Profile';
@@ -29,6 +31,8 @@ export default function App() {
         <Route path="/matches" element={<ProtectedRoute><Matches /></ProtectedRoute>} />
         <Route path="/schedule" element={<ProtectedRoute><SchedulePrizes /></ProtectedRoute>} />
         <Route path="/groups" element={<ProtectedRoute><Groups /></ProtectedRoute>} />
+        <Route path="/guess-groups" element={<ProtectedRoute requireGuessGroups><GuessGroups /></ProtectedRoute>} />
+        <Route path="/guess-groups/:id" element={<ProtectedRoute requireGuessGroups><GuessGroupDetail /></ProtectedRoute>} />
         <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />

@@ -91,7 +91,44 @@ async function main() {
     `);
     console.log('   ✓ special_predictions.top_scorer_player_id');
   }
+  // הרחבת settings.value ל-TEXT (הגדרות ארוכות כמו badges_config / departments)
+  const settingsValueCol = await db.one(`
+    SELECT DATA_TYPE FROM information_schema.columns
+    WHERE table_schema = DATABASE() AND table_name = 'settings' AND column_name = 'value'
+  `);
+  if (settingsValueCol && settingsValueCol.DATA_TYPE && settingsValueCol.DATA_TYPE.toLowerCase() === 'varchar') {
+    await db.query('ALTER TABLE settings MODIFY COLUMN `value` TEXT NULL');
+    console.log('   ✓ settings.value → TEXT');
+  }
+
+  // הרשאת "ניחוש קבוצתי" למשתמש (ברירת מחדל: כבוי)
+  await addColumnIfMissing('users', 'can_guess_groups',
+    'ALTER TABLE users ADD COLUMN can_guess_groups TINYINT(1) NOT NULL DEFAULT 0 AFTER is_admin');
+
+  // עמודות "ניחוש קבוצתי" (אם הטבלאות נוצרו בגרסה מוקדמת ללא עמודות אלה)
+  await addColumnIfMissing('guess_groups', 'entry_cost',
+    'ALTER TABLE guess_groups ADD COLUMN entry_cost INT NOT NULL DEFAULT 0 AFTER leader_user_id');
+  await addColumnIfMissing('guess_group_members', 'paid_points',
+    'ALTER TABLE guess_group_members ADD COLUMN paid_points INT NOT NULL DEFAULT 0 AFTER role');
+
   console.log('   ✓ הסכמה הוקמה בהצלחה');
+}
+
+// עזר: מוסיף עמודה רק אם הטבלה קיימת והעמודה חסרה
+async function addColumnIfMissing(table, column, ddl) {
+  const tbl = await db.one(`
+    SELECT COUNT(*) AS n FROM information_schema.tables
+    WHERE table_schema = DATABASE() AND table_name = ?
+  `, [table]);
+  if (!tbl.n) return; // הטבלה תיווצר ממילא עם כל העמודות מתוך schema.js
+  const col = await db.one(`
+    SELECT COUNT(*) AS n FROM information_schema.columns
+    WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?
+  `, [table, column]);
+  if (!col.n) {
+    await db.query(ddl);
+    console.log(`   ✓ ${table}.${column}`);
+  }
 }
 
 main().then(() => process.exit(0)).catch(e => {

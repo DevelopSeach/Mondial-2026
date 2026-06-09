@@ -68,6 +68,7 @@ function sanitize(user) {
     profile_image_url: user.profile_image_url || '',
     department: user.department || '',
     isAdmin: !!user.is_admin,
+    canGuessGroups: !!user.is_admin || !!user.can_guess_groups,
     createdAt: user.created_at
   };
 }

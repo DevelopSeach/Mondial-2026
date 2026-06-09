@@ -4,6 +4,7 @@ const db = require('../db');
 const { auth } = require('../middleware/auth');
 const { seedPlayersIfEmpty } = require('../lib/players-catalog');
 const { seedScheduleItems } = require('../lib/schedule-items');
+const { leaderboard, userGroupStats } = require('../services/scoring');
 
 const router = express.Router();
 
@@ -38,6 +39,52 @@ router.get('/my', auth(), async (req, res) => {
     res.json({ predictions: preds, special: special || null });
   } catch (e) {
     console.error('predictions/my:', e);
+    res.status(500).json({ error: 'שגיאת שרת' });
+  }
+});
+
+// סטטיסטיקות המשתמש המחובר (אישי + קבוצתי) — לעמוד הפרופיל
+router.get('/stats', auth(), async (req, res) => {
+  try {
+    const exactWeight = Number(await getSetting('scoring_exact', 5));
+    const resultWeight = Number(await getSetting('scoring_result', 3));
+
+    const agg = await db.one(`
+      SELECT
+        COUNT(p.id) AS num_predictions,
+        COALESCE(SUM(p.points), 0) AS total_points,
+        SUM(CASE WHEN p.points = ? THEN 1 ELSE 0 END) AS exact_hits,
+        SUM(CASE WHEN p.points > 0 AND p.points < ? THEN 1 ELSE 0 END) AS result_hits,
+        SUM(CASE WHEN m.status = 'finished' AND m.home_score IS NOT NULL AND p.points = 0 THEN 1 ELSE 0 END) AS misses,
+        SUM(CASE WHEN m.status = 'finished' AND m.home_score IS NOT NULL THEN 1 ELSE 0 END) AS settled
+      FROM predictions p
+      JOIN matches m ON m.id = p.match_id
+      WHERE p.user_id = ?
+    `, [exactWeight, exactWeight, req.user.id]);
+
+    // דירוג אישי מתוך לוח המצטיינים הראשי
+    const board = await leaderboard();
+    const myRow = board.find(r => r.id === req.user.id) || null;
+
+    const group = await userGroupStats(req.user.id);
+
+    res.json({
+      individual: {
+        num_predictions: Number(agg?.num_predictions || 0),
+        match_points:    Number(agg?.total_points || 0),
+        exact_hits:      Number(agg?.exact_hits || 0),
+        result_hits:     Number(agg?.result_hits || 0),
+        misses:          Number(agg?.misses || 0),
+        settled:         Number(agg?.settled || 0),
+        total_points:    myRow ? myRow.total_points : Number(agg?.total_points || 0),
+        bonus_points:    myRow ? myRow.bonus_points : 0,
+        rank:            myRow ? myRow.rank : null,
+        players_count:   board.length
+      },
+      group
+    });
+  } catch (e) {
+    console.error('predictions/stats:', e);
     res.status(500).json({ error: 'שגיאת שרת' });
   }
 });

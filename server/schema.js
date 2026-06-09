@@ -15,6 +15,7 @@ module.exports = [
     password_hash VARCHAR(120)    NOT NULL,
     password_changed TINYINT(1)   NOT NULL DEFAULT 0,
     is_admin      TINYINT(1)      NOT NULL DEFAULT 0,
+    can_guess_groups TINYINT(1)   NOT NULL DEFAULT 0,
     created_at    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
@@ -141,6 +142,48 @@ module.exports = [
     CONSTRAINT fk_contact_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
+  // ────────── ניחוש קבוצתי (Guess-Groups) ──────────
+  // קבוצת ניחוש: מספר חברים מחזיקים סט משותף של הימורי תוצאה (1/X/2)
+  `CREATE TABLE IF NOT EXISTS guess_groups (
+    id             INT             AUTO_INCREMENT PRIMARY KEY,
+    name           VARCHAR(120)    NOT NULL,
+    description    VARCHAR(255)    NULL,
+    leader_user_id INT             NOT NULL,
+    entry_cost     INT             NOT NULL DEFAULT 0,
+    created_at     DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at     DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_guess_groups_leader (leader_user_id),
+    CONSTRAINT fk_guess_groups_leader FOREIGN KEY (leader_user_id) REFERENCES users(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  `CREATE TABLE IF NOT EXISTS guess_group_members (
+    id         INT      AUTO_INCREMENT PRIMARY KEY,
+    group_id   INT      NOT NULL,
+    user_id    INT      NOT NULL,
+    role       ENUM('leader','member') NOT NULL DEFAULT 'member',
+    paid_points INT     NOT NULL DEFAULT 0,
+    joined_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_group_member (group_id, user_id),
+    INDEX idx_group_member_user (user_id),
+    CONSTRAINT fk_group_member_group FOREIGN KEY (group_id) REFERENCES guess_groups(id) ON DELETE CASCADE,
+    CONSTRAINT fk_group_member_user  FOREIGN KEY (user_id)  REFERENCES users(id)        ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  // pick: home / draw / away (1 / X / 2). points = בונוס הקבוצה להימור זה לאחר סיום המשחק
+  `CREATE TABLE IF NOT EXISTS guess_group_bets (
+    id         INT      AUTO_INCREMENT PRIMARY KEY,
+    group_id   INT      NOT NULL,
+    match_id   INT      NOT NULL,
+    pick       ENUM('home','draw','away') NOT NULL,
+    points     INT      NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_group_match (group_id, match_id),
+    INDEX idx_group_bet_match (match_id),
+    CONSTRAINT fk_group_bet_group FOREIGN KEY (group_id) REFERENCES guess_groups(id) ON DELETE CASCADE,
+    CONSTRAINT fk_group_bet_match FOREIGN KEY (match_id) REFERENCES matches(id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
   // ────────── תרגומים ──────────
   `CREATE TABLE IF NOT EXISTS translations (
     id                INT             AUTO_INCREMENT PRIMARY KEY,
@@ -155,7 +198,7 @@ module.exports = [
   // ────────── הגדרות מערכת ──────────
   `CREATE TABLE IF NOT EXISTS settings (
     \`key\`   VARCHAR(80)    NOT NULL PRIMARY KEY,
-    \`value\` VARCHAR(400)   NULL
+    \`value\` TEXT           NULL
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
 
 ];

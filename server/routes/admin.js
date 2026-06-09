@@ -12,7 +12,7 @@ const XLSX = require('xlsx');
 const db = require('../db');
 const { auth, adminOnly } = require('../middleware/auth');
 const { updateMatchScore, runDailyUpdate } = require('../services/scraper');
-const { recalcForMatch } = require('../services/scoring');
+const { recalcForMatch, loadBadgeConfig, DEFAULT_BADGE_CONFIG } = require('../services/scoring');
 const { seedScheduleItems } = require('../lib/schedule-items');
 const { seedFooterDocuments } = require('../lib/footer-content');
 const {
@@ -331,7 +331,7 @@ router.get('/overview', async (req, res) => {
 router.get('/users', async (req, res) => {
   try {
     const rows = await db.query(`
-      SELECT u.id, u.email, u.name, u.phone_number, u.department, u.is_admin, u.created_at,
+      SELECT u.id, u.email, u.name, u.phone_number, u.department, u.is_admin, u.can_guess_groups, u.created_at,
         (SELECT COUNT(*) FROM predictions WHERE user_id = u.id) AS num_predictions
       FROM users u
       ORDER BY u.id DESC
@@ -365,7 +365,7 @@ router.post('/users', async (req, res) => {
       [email, name, phoneNumber || null, department || null, hash]
     );
     const user = await db.one(`
-      SELECT u.id, u.email, u.name, u.phone_number, u.department, u.is_admin, u.created_at,
+      SELECT u.id, u.email, u.name, u.phone_number, u.department, u.is_admin, u.can_guess_groups, u.created_at,
         (SELECT COUNT(*) FROM predictions WHERE user_id = u.id) AS num_predictions
       FROM users u
       WHERE u.id = ?
@@ -870,13 +870,24 @@ router.patch('/users/:id', async (req, res) => {
       return res.status(409).json({ error: 'אימייל זה כבר קיים במערכת' });
     }
 
-    await db.run(
-      'UPDATE users SET name = ?, email = ?, phone_number = ?, department = ? WHERE id = ?',
-      [name, email, phoneNumber || null, department || null, id]
-    );
+    const canGuessGroups = req.body?.can_guess_groups === undefined
+      ? null
+      : (req.body.can_guess_groups ? 1 : 0);
+
+    if (canGuessGroups === null) {
+      await db.run(
+        'UPDATE users SET name = ?, email = ?, phone_number = ?, department = ? WHERE id = ?',
+        [name, email, phoneNumber || null, department || null, id]
+      );
+    } else {
+      await db.run(
+        'UPDATE users SET name = ?, email = ?, phone_number = ?, department = ?, can_guess_groups = ? WHERE id = ?',
+        [name, email, phoneNumber || null, department || null, canGuessGroups, id]
+      );
+    }
 
     const updated = await db.one(`
-      SELECT u.id, u.email, u.name, u.phone_number, u.department, u.is_admin, u.created_at,
+      SELECT u.id, u.email, u.name, u.phone_number, u.department, u.is_admin, u.can_guess_groups, u.created_at,
         (SELECT COUNT(*) FROM predictions WHERE user_id = u.id) AS num_predictions
       FROM users u
       WHERE u.id = ?
@@ -1026,6 +1037,47 @@ router.post('/settings', async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     console.error('admin/settings/set:', e);
+    res.status(500).json({ error: 'שגיאת שרת' });
+  }
+});
+
+// ────────── ניהול תגי הישג ──────────
+// מחזיר את הקונפיגורציה הפעילה (ברירות מחדל ממוזגות עם השמור) + רשימת מזהי התגים.
+router.get('/badges', async (req, res) => {
+  try {
+    const config = await loadBadgeConfig();
+    res.json({ config, defaults: DEFAULT_BADGE_CONFIG, ids: Object.keys(DEFAULT_BADGE_CONFIG.badges) });
+  } catch (e) {
+    console.error('admin/badges/get:', e);
+    res.status(500).json({ error: 'שגיאת שרת' });
+  }
+});
+
+router.post('/badges', async (req, res) => {
+  try {
+    const incoming = req.body || {};
+    // מיזוג בטוח על-גבי ברירות המחדל — שומר רק שדות מוכרים
+    const merged = { badges: {}, thresholds: { ...DEFAULT_BADGE_CONFIG.thresholds } };
+    for (const id of Object.keys(DEFAULT_BADGE_CONFIG.badges)) {
+      const d = DEFAULT_BADGE_CONFIG.badges[id];
+      const inc = (incoming.badges || {})[id] || {};
+      merged.badges[id] = {
+        enabled: inc.enabled === undefined ? d.enabled : !!inc.enabled,
+        emoji: (typeof inc.emoji === 'string' && inc.emoji.trim()) ? inc.emoji.trim().slice(0, 8) : d.emoji
+      };
+    }
+    const th = incoming.thresholds || {};
+    for (const k of Object.keys(DEFAULT_BADGE_CONFIG.thresholds)) {
+      const n = Number(th[k]);
+      if (Number.isFinite(n) && n >= 0) merged.thresholds[k] = Math.trunc(n);
+    }
+    await db.run(
+      'INSERT INTO settings (`key`, `value`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)',
+      ['badges_config', JSON.stringify(merged)]
+    );
+    res.json({ ok: true, config: merged });
+  } catch (e) {
+    console.error('admin/badges/set:', e);
     res.status(500).json({ error: 'שגיאת שרת' });
   }
 });

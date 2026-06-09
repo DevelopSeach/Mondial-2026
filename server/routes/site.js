@@ -6,6 +6,7 @@ const db = require('../db');
 const { auth } = require('../middleware/auth');
 const { seedFooterDocuments } = require('../lib/footer-content');
 const { seedTranslations, normalizeLanguage, SUPPORTED_LANGUAGES } = require('../lib/translations');
+const { getActiveTheme, getThemeNameOverrides } = require('../lib/themes');
 
 const router = express.Router();
 const upload = multer({
@@ -53,9 +54,27 @@ router.get('/translations', auth(false), async (req, res) => {
       ORDER BY translation_key ASC
     `, [language]);
     const items = Object.fromEntries(rows.map((row) => [row.translation_key, row.translation_value]));
+
+    // דריסת שמות (תפריט / שם אפליקציה) לפי ערכת הנושא הפעילה
+    const overrides = getThemeNameOverrides();
+    for (const [key, byLang] of Object.entries(overrides)) {
+      const val = byLang && (byLang[language] || byLang.he || byLang.en);
+      if (val) items[key] = val;
+    }
+
     res.json({ language, supported_languages: SUPPORTED_LANGUAGES, items });
   } catch (e) {
     console.error('site/translations:', e);
+    res.status(500).json({ error: 'שגיאת שרת' });
+  }
+});
+
+// קונפיגורציית ערכת הנושא הפעילה (צבעים / נכסים / תמונות תגים)
+router.get('/theme', auth(false), async (req, res) => {
+  try {
+    res.json(getActiveTheme());
+  } catch (e) {
+    console.error('site/theme:', e);
     res.status(500).json({ error: 'שגיאת שרת' });
   }
 });

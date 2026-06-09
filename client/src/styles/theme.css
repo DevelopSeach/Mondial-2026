@@ -53,7 +53,7 @@ body {
   /* רקע גלובלי עם תמונה + שכבת קריאות */
   background-image:
     linear-gradient(rgba(245, 240, 230, 0.84), rgba(245, 240, 230, 0.84)),
-    url('/bck1.png'),
+    var(--bg-image-1, url('/bck1.png')),
     radial-gradient(circle at 15% 50%, rgba(230,181,74,0.04), transparent 50%),
     radial-gradient(circle at 85% 30%, rgba(193,39,45,0.04), transparent 50%),
     repeating-linear-gradient(
@@ -1220,7 +1220,7 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
 .login-hero {
   background:
     linear-gradient(135deg, rgba(10,20,32,0.78), rgba(10,20,32,0.48)),
-    url('/bck1.png');
+    var(--bg-image-1, url('/bck1.png'));
   background-size: 100% 100%, 100% 100%;
   background-position: center center, center center;
   background-repeat: no-repeat;
@@ -1284,7 +1284,7 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
 .login-form-area {
   background:
     linear-gradient(rgba(245,240,230,0.44), rgba(245,240,230,0.44)),
-    url('/bck2.png');
+    var(--bg-image-2, url('/bck2.png'));
   background-size: 100% 100%, 100% 100%;
   background-position: center center, center center;
   background-repeat: no-repeat;
@@ -1567,4 +1567,197 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
   letter-spacing: 0.15em;
   padding: 4px 12px;
   margin: 24px 0 12px;
+}
+
+/* ─────────── תגי הישג בטבלת המצטיינים ─────────── */
+.lb-badges { display: inline-flex; gap: 3px; flex-wrap: wrap; align-items: center; margin-inline-start: 6px; vertical-align: middle; }
+.lb-badge {
+  display: inline-grid; place-items: center; border-radius: 50%;
+  width: 22px; height: 22px; font-size: 13px; line-height: 1;
+  box-shadow: 0 0 0 1.5px var(--line-bold); cursor: default;
+  transition: transform .12s;
+}
+.lb-badge:hover { transform: scale(1.18); }
+.lb-badge-img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.lb-badges-lg .lb-badge { width: 28px; height: 28px; font-size: 16px; }
+.lb-badge-gold   { background: #fbf1d6; box-shadow: 0 0 0 1.5px var(--gold-deep); }
+.lb-badge-blue   { background: #dde9f5; box-shadow: 0 0 0 1.5px var(--ink-soft); }
+.lb-badge-green  { background: #dcefe0; box-shadow: 0 0 0 1.5px var(--pitch); }
+.lb-badge-red    { background: #fbe0e1; box-shadow: 0 0 0 1.5px var(--crimson); }
+.lb-badge-orange { background: #ffe6d6; box-shadow: 0 0 0 1.5px var(--hot-orange); }
+
+/* ─────────── ניהול תגים בלוח הניהול ─────────── */
+.badge-admin-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.badge-admin-row {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--paper-pure); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px;
+}
+.badge-admin-row.disabled { opacity: 0.5; }
+.badge-admin-emoji-preview { font-size: 22px; width: 32px; text-align: center; }
+.badge-admin-meta { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.badge-admin-emoji-input { width: 64px; text-align: center; font-size: 18px; padding: 4px; }
+.badge-admin-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; white-space: nowrap; cursor: pointer; }
+
+/* ─────────── ניחוש קבוצתי (Guess-Groups) ─────────── */
+.btn-danger { background: var(--crimson); color: var(--paper); }
+.btn-danger:hover { background: var(--crimson-deep); }
+
+.gg-tabs { display: flex; gap: 8px; margin: 4px 0 18px; flex-wrap: wrap; }
+.gg-tab {
+  background: var(--paper-dim); border: 1px solid var(--line); color: var(--ink);
+  font-family: var(--font-body); font-weight: 700; font-size: 14px;
+  padding: 8px 18px; border-radius: 999px; cursor: pointer; transition: all .15s;
+}
+.gg-tab:hover { border-color: var(--line-bold); }
+.gg-tab.active { background: var(--ink); color: var(--gold); border-color: var(--ink); }
+
+.gg-create { margin-bottom: 18px; }
+.gg-points-chip {
+  display: inline-block; margin-top: 8px; background: var(--paper-dim);
+  border: 1px solid var(--line); border-radius: 999px; padding: 4px 14px; font-size: 13px;
+}
+.gg-points-chip strong { color: var(--pitch-deep); }
+
+.gg-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.gg-card {
+  display: block; text-decoration: none; color: inherit;
+  background: var(--paper-pure); border: 1px solid var(--line); border-radius: 14px;
+  padding: 16px; box-shadow: var(--shadow-md); transition: transform .15s, box-shadow .15s;
+}
+.gg-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+.gg-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.gg-card-name { font-family: var(--font-display); font-size: 22px; letter-spacing: .04em; color: var(--ink); }
+.gg-card-desc { color: var(--muted); font-size: 13px; margin-top: 4px; }
+.gg-cost-line { margin-top: 8px; }
+.gg-cost-chip {
+  display: inline-block; background: var(--gold); color: var(--ink); font-weight: 700;
+  font-size: 12px; padding: 3px 10px; border-radius: 999px;
+}
+.gg-cost-chip.free { background: var(--paper-dim); color: var(--muted); }
+.gg-card-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
+.gg-card-stats > div, .gg-detail-stats > div { display: flex; flex-direction: column; align-items: center; }
+.gg-stat-val { font-family: var(--font-numeric); font-size: 22px; color: var(--ink); line-height: 1; }
+.gg-stat-lbl { font-size: 10px; letter-spacing: .12em; color: var(--muted); text-transform: uppercase; margin-top: 3px; }
+.gg-card-members { display: flex; gap: 4px; margin-top: 12px; }
+
+.gg-mini-avatar {
+  width: 28px; height: 28px; border-radius: 50%; object-fit: cover;
+  border: 2px solid var(--paper); box-shadow: 0 0 0 1px var(--line-bold);
+}
+.gg-mini-fallback { display: grid; place-items: center; background: var(--ink); color: var(--gold); font-weight: 700; font-size: 12px; }
+
+/* badges */
+.gg-badge-row { display: inline-flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.gg-badge {
+  display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700;
+  padding: 2px 8px; border-radius: 999px; white-space: nowrap;
+}
+.gg-badge-gold { background: var(--gold); color: var(--ink); }
+.gg-badge-silver { background: #c9d1d9; color: var(--ink); }
+.gg-badge-bronze { background: #cd7f32; color: var(--paper); }
+.gg-badge-blue { background: var(--ink-soft); color: var(--gold); }
+
+.gg-board-name { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; color: var(--ink); }
+.gg-board-leader { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+/* detail page */
+.gg-back-link { background: none; border: none; color: var(--pitch-deep); cursor: pointer; font-size: 14px; padding: 4px 0; margin-bottom: 8px; }
+.gg-detail-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.gg-detail-stats { display: flex; gap: 18px; }
+.gg-cost-banner {
+  display: flex; gap: 18px; align-items: center; flex-wrap: wrap;
+  background: var(--paper-dim); border: 1px solid var(--line); border-radius: 10px;
+  padding: 8px 16px; margin: 12px 0; font-size: 14px;
+}
+.gg-cost-banner .gg-net strong { color: var(--pitch-deep); }
+
+.gg-member-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.gg-member { display: flex; align-items: center; gap: 10px; }
+.gg-member-name { font-weight: 600; }
+.gg-remove-x {
+  margin-inline-start: auto; background: var(--paper-dim); border: 1px solid var(--line);
+  color: var(--crimson); width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-size: 16px; line-height: 1;
+}
+.gg-remove-x:hover { background: var(--crimson); color: var(--paper); }
+
+.gg-add-member { margin-top: 14px; }
+.gg-search-results { border: 1px solid var(--line); border-radius: 10px; margin-top: 6px; overflow: hidden; }
+.gg-search-row {
+  display: flex; align-items: center; justify-content: space-between; width: 100%;
+  background: var(--paper-pure); border: none; border-bottom: 1px solid var(--line);
+  padding: 10px 14px; cursor: pointer; font-size: 14px;
+}
+.gg-search-row:last-child { border-bottom: none; }
+.gg-search-row:hover { background: var(--paper-dim); }
+.gg-add-plus { color: var(--pitch-deep); font-weight: 700; font-size: 13px; }
+
+.gg-add-bet { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 12px 0; }
+.gg-add-bet select { min-width: 220px; }
+.gg-pick-group { display: inline-flex; gap: 4px; }
+.gg-pick-inline { justify-content: center; }
+.gg-pick-btn {
+  width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--line-bold);
+  background: var(--paper-pure); color: var(--ink); font-weight: 800; cursor: pointer; font-size: 15px;
+}
+.gg-pick-btn:hover { border-color: var(--ink); }
+.gg-pick-btn.active { background: var(--ink); color: var(--gold); border-color: var(--ink); }
+
+.gg-bets-table .gg-bet-match { display: flex; align-items: center; gap: 6px; }
+.gg-vs { color: var(--muted); }
+
+/* statistics card */
+.gg-stats-section {
+  font-family: var(--font-display); font-size: 16px; letter-spacing: .1em;
+  color: var(--ink); border-bottom: 2px solid var(--line); padding-bottom: 4px; margin: 16px 0 10px;
+}
+.gg-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
+.gg-metric { display: flex; flex-direction: column; background: var(--paper-dim); border-radius: 10px; padding: 10px 12px; }
+.gg-metric-val { font-family: var(--font-numeric); font-size: 26px; color: var(--ink); line-height: 1; }
+.gg-metric-val.accent { color: var(--pitch-deep); }
+.gg-metric-lbl { font-size: 11px; color: var(--muted); letter-spacing: .08em; margin-top: 4px; }
+.gg-metric-sub { font-size: 12px; color: var(--ink); margin-top: 2px; font-weight: 600; }
+
+.gg-partner { display: flex; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.gg-partner-label { color: var(--muted); font-size: 13px; }
+.gg-partner-name { display: inline-flex; align-items: center; gap: 6px; }
+
+.gg-mygroups { margin-top: 14px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.gg-mygroups-head, .gg-mygroups-row {
+  display: grid; grid-template-columns: 1fr 90px 110px; gap: 8px; align-items: center; padding: 8px 14px;
+}
+.gg-mygroups-head { background: var(--ink); color: var(--gold); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+.gg-mygroups-row { background: var(--paper-pure); border-top: 1px solid var(--line); text-decoration: none; color: var(--ink); }
+.gg-mygroups-row:hover { background: var(--paper-dim); }
+.gg-mygroups-rank { color: var(--muted); font-size: 12px; }
+.gg-mygroups-earn { font-family: var(--font-numeric); font-size: 18px; }
+.gg-mygroups-earn.pos { color: var(--pitch-deep); }
+.gg-mygroups-earn.neg { color: var(--crimson); }
+.gg-mygroups-net { font-size: 12px; color: var(--muted); }
+
+/* ─────────── באנר הקבוצות המובילות (30% התחתונים בפרופיל) ─────────── */
+.gg-banner-set { margin-top: 28px; min-height: 30vh; display: flex; flex-direction: column; }
+.gg-banner {
+  background: linear-gradient(135deg, var(--ink) 0%, var(--ink-2) 100%);
+  border-radius: 16px; padding: 18px 20px; box-shadow: var(--shadow-lg); flex: 1;
+}
+.gg-banner-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.gg-banner-title { font-family: var(--font-display); font-size: 26px; letter-spacing: .06em; color: var(--gold); }
+.gg-banner-sub { color: rgba(245,240,230,0.7); font-size: 13px; }
+.gg-banner-empty { color: rgba(245,240,230,0.6); padding: 20px; text-align: center; }
+.gg-banner-strip { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 6px; }
+.gg-banner-card {
+  flex: 0 0 200px; background: rgba(245,240,230,0.06); border: 1px solid rgba(230,181,74,0.25);
+  border-radius: 12px; padding: 14px; text-decoration: none; color: var(--paper); transition: transform .15s, border-color .15s;
+}
+.gg-banner-card:hover { transform: translateY(-3px); border-color: var(--gold); }
+.gg-banner-card.rank-1 { border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); }
+.gg-banner-rank { font-family: var(--font-numeric); font-size: 30px; color: var(--gold); line-height: 1; }
+.gg-banner-name { font-family: var(--font-display); font-size: 20px; letter-spacing: .04em; margin-top: 4px; }
+.gg-banner-pts { font-family: var(--font-numeric); font-size: 22px; color: var(--paper); margin-top: 6px; }
+.gg-banner-pts span { font-size: 12px; color: rgba(245,240,230,0.7); }
+.gg-banner-meta { font-size: 11px; color: rgba(245,240,230,0.65); margin-top: 6px; line-height: 1.5; }
+
+@media (max-width: 600px) {
+  .gg-detail-head { flex-direction: column; }
+  .gg-add-bet select { min-width: 0; flex: 1; }
 }

@@ -8,12 +8,18 @@ const fs = require('fs');
 
 const db = require('./db');
 const { runDailyUpdate } = require('./services/scraper');
+const { activeThemeAssetsDir, themeDir, DEFAULT_THEME, activeThemeName } = require('./lib/themes');
 
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 app.use('/data', express.static(path.join(__dirname, '..', 'data')));
 app.use('/docs', express.static(path.join(__dirname, '..', 'docs')));
+
+// נכסי ערכת הנושא: קודם הערכה הפעילה, ואז ברירת המחדל (seach) כנפילה לכל נכס חסר
+app.use('/theme-assets', express.static(activeThemeAssetsDir()));
+app.use('/theme-assets', express.static(themeDir(DEFAULT_THEME)));
+console.log(`🎨 ערכת נושא פעילה: ${activeThemeName()}`);
 
 // נתיבי API
 app.use('/api/auth',         require('./routes/auth'));
@@ -22,6 +28,7 @@ app.use('/api/site',         require('./routes/site'));
 app.use('/api',              require('./routes/matches'));
 app.use('/api/schedule',     require('./routes/schedule'));
 app.use('/api/predictions',  require('./routes/predictions'));
+app.use('/api/guess-groups', require('./routes/guess-groups'));
 app.use('/api/leaderboard',  require('./routes/leaderboard'));
 app.use('/api/admin',        require('./routes/admin'));
 

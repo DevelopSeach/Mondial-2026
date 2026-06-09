@@ -111,6 +111,11 @@ async function seed() {
     ['scoring_top_scorer','15'],
     ['lock_hours_before', process.env.LOCK_HOURS_BEFORE || '1'],
     ['scraper_mode',      process.env.SCRAPER_MODE || 'manual'],
+    // ניחוש קבוצתי — גבולות הניתנים לשינוי בלוח הניהול
+    ['group_max_per_user',   '8'],
+    ['group_max_members',    '5'],
+    ['group_entry_cost_max', '5'],
+    ['group_multiplier_cap', '5'],
     ['departments',       JSON.stringify(DEFAULT_DEPARTMENTS)],
     ['site_url',          process.env.SITE_URL || 'http://localhost:5225'],
     ['smtp_server',       process.env.SMTP_SERVER || 'smtp.inbox.co.il'],

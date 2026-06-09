@@ -3,11 +3,13 @@ import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { errMsg } from '../api/client';
 import { useTranslation } from '../i18n/TranslationContext';
+import { useTheme } from '../context/ThemeContext';
 import LanguageSelector from '../components/LanguageSelector';
 
 export default function Login() {
   const { user, login, register } = useAuth();
   const { t, language } = useTranslation();
+  const { assets } = useTheme();
   const nav = useNavigate();
   const [mode, setMode] = useState('login');
   const [name, setName] = useState('');
@@ -47,7 +49,7 @@ export default function Login() {
         <LanguageSelector />
       </div>
       <div className="login-top-logo-wrap">
-        <img className="login-top-logo" src="/shiah-logo-white.png" alt="Shiah logo" />
+        <img className="login-top-logo" src={assets.logo || '/shiah-logo-white.png'} alt="logo" />
       </div>
       <div className="login-hero">
         <div style={{position:'relative'}}>

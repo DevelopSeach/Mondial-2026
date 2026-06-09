@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from '../i18n/TranslationContext';
+import LeaderboardBadges from '../components/LeaderboardBadges';
 
 export default function Leaderboard() {
   const [rows, setRows] = useState([]);
@@ -71,6 +72,7 @@ export default function Leaderboard() {
                     )}
                     <div className="leaderboard-user-meta">
                       <strong>{r.name}</strong>
+                      <LeaderboardBadges badges={r.badges} />
                     </div>
                   </div>
                   {r.id === user.id && <span style={{marginInlineStart: 8, color:'var(--gold-deep)', fontSize: 11, letterSpacing:'.15em'}}>{t('leaderboard.this_is_me')}</span>}

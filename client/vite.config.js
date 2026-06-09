@@ -10,7 +10,8 @@ export default defineConfig({
     proxy: {
       '/api': 'http://localhost:5222',
       '/data': 'http://localhost:5222',
-      '/docs': 'http://localhost:5222'
+      '/docs': 'http://localhost:5222',
+      '/theme-assets': 'http://localhost:5222'
     }
   },
   build: {

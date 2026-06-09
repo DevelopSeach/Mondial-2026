@@ -16,6 +16,7 @@ export default function Admin() {
     { id: 'departments', label: t('admin.tab_departments') },
     { id: 'matches', label: t('admin.tab_matches') },
     { id: 'settings', label: t('admin.tab_settings') },
+    { id: 'badges', label: t('admin.tab_badges') },
     { id: 'messages', label: 'שליחת הודעות' },
     { id: 'schedule', label: t('admin.tab_schedule') },
     { id: 'actions', label: t('admin.tab_actions') }
@@ -43,6 +44,7 @@ export default function Admin() {
       {tab === 'departments' && <DepartmentsTab />}
       {tab === 'matches'  && <MatchesTab  />}
       {tab === 'settings' && <SettingsTab />}
+      {tab === 'badges'   && <BadgesTab   />}
       {tab === 'messages' && <MessagesTab />}
       {tab === 'schedule' && <ScheduleTab />}
       {tab === 'actions'  && <ActionsTab  />}
@@ -134,7 +136,8 @@ function UsersTab() {
       name: user.name || '',
       email: user.email || '',
       phone_number: user.phone_number || '',
-      department: user.department || ''
+      department: user.department || '',
+      can_guess_groups: !!user.can_guess_groups
     });
   };
 
@@ -199,7 +202,8 @@ function UsersTab() {
         name: editDraft.name,
         email: editDraft.email,
         phone_number: editDraft.phone_number,
-        department: editDraft.department
+        department: editDraft.department,
+        can_guess_groups: editDraft.can_guess_groups
       };
       const { data } = await api.patch(`/admin/users/${editingUser.id}`, payload);
       setEditNotice('הנתונים נשמרו בהצלחה');
@@ -209,7 +213,8 @@ function UsersTab() {
           name: data.user.name || '',
           email: data.user.email || '',
           phone_number: data.user.phone_number || '',
-          department: data.user.department || ''
+          department: data.user.department || '',
+          can_guess_groups: !!data.user.can_guess_groups
         });
       }
       load();
@@ -577,6 +582,16 @@ function UsersTab() {
                 <option key={dep} value={dep} />
               ))}
             </datalist>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 16, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={!!editDraft.can_guess_groups}
+                onChange={e => setEditDraft(s => ({ ...s, can_guess_groups: e.target.checked }))}
+                style={{ width: 18, height: 18 }}
+              />
+              <span>ניחוש קבוצתי (הרשאת גישה למערכת הניחוש הקבוצתי)</span>
+            </label>
 
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 20 }}>
               <button className="btn btn-pitch" onClick={saveUser} disabled={editBusy}>
@@ -1004,6 +1019,18 @@ function SettingsTab() {
         </div>
       </SettingsCard>
 
+      <SettingsCard title="ניחוש קבוצתי">
+        <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 0 }}>
+          גבולות מערכת הניחוש הקבוצתי. שינוי המכפיל המקסימלי ישפיע על חישובים חדשים (הרץ "חישוב מחדש" לעדכון רטרואקטיבי).
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <NumField label="מקס׳ קבוצות לכל משתמש" value={draft.group_max_per_user ?? 8} onChange={v => upd('group_max_per_user', v)} />
+          <NumField label="מקס׳ חברים בקבוצה" value={draft.group_max_members ?? 5} onChange={v => upd('group_max_members', v)} />
+          <NumField label="דמי כניסה מקסימליים (נק׳)" value={draft.group_entry_cost_max ?? 5} onChange={v => upd('group_entry_cost_max', v)} />
+          <NumField label="מכפיל מקסימלי (×)" value={draft.group_multiplier_cap ?? 5} onChange={v => upd('group_multiplier_cap', v)} />
+        </div>
+      </SettingsCard>
+
       <SettingsCard title="נעילת ניחושים">
         <div className="field" style={{ maxWidth: 280 }}>
           <label>שעות לפני פתיחת המשחק</label>
@@ -1283,6 +1310,96 @@ function NumField({ label, value, onChange }) {
         value={value ?? ''}
         onChange={e => onChange(e.target.value)}
       />
+    </div>
+  );
+}
+
+function BadgesTab() {
+  const { t } = useTranslation();
+  const [ids, setIds] = useState([]);
+  const [config, setConfig] = useState(null);
+  const [saved, setSaved] = useState(null);
+  const [err, setErr] = useState('');
+  const [ok, setOk] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const load = () => {
+    api.get('/admin/badges')
+      .then(r => { setIds(r.data.ids || []); setConfig(r.data.config); setSaved(JSON.stringify(r.data.config)); })
+      .catch(e => setErr(errMsg(e)));
+  };
+  useEffect(() => { load(); }, []);
+
+  if (!config) return <div style={{ color: 'var(--muted)' }}>{err || t('common.loading')}</div>;
+
+  const updBadge = (id, key, value) =>
+    setConfig(c => ({ ...c, badges: { ...c.badges, [id]: { ...c.badges[id], [key]: value } } }));
+  const updThreshold = (key, value) =>
+    setConfig(c => ({ ...c, thresholds: { ...c.thresholds, [key]: value } }));
+
+  const save = async () => {
+    setErr(''); setOk(''); setBusy(true);
+    try {
+      const { data } = await api.post('/admin/badges', config);
+      setConfig(data.config); setSaved(JSON.stringify(data.config));
+      setOk(t('admin.badges_saved'));
+    } catch (e) { setErr(errMsg(e)); } finally { setBusy(false); }
+  };
+
+  const dirty = JSON.stringify(config) !== saved;
+
+  return (
+    <div style={{ maxWidth: 760 }}>
+      {err && <div className="alert alert-error">{err}</div>}
+      {ok && <div className="alert alert-success">{ok}</div>}
+
+      <SettingsCard title={t('admin.tab_badges')}>
+        <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 0 }}>{t('admin.badges_help')}</p>
+        <div className="badge-admin-list">
+          {ids.map(id => {
+            const b = config.badges[id] || {};
+            return (
+              <div key={id} className={`badge-admin-row ${b.enabled ? '' : 'disabled'}`}>
+                <span className="badge-admin-emoji-preview">{b.emoji}</span>
+                <div className="badge-admin-meta">
+                  <strong>{t(`badge.${id}.name`)}</strong>
+                  <span style={{ color: 'var(--muted)', fontSize: 12 }}>{t(`badge.${id}.desc`)}</span>
+                </div>
+                <input
+                  className="badge-admin-emoji-input"
+                  value={b.emoji || ''}
+                  onChange={e => updBadge(id, 'emoji', e.target.value)}
+                  maxLength={8}
+                  aria-label="emoji"
+                />
+                <label className="badge-admin-toggle">
+                  <input
+                    type="checkbox"
+                    checked={!!b.enabled}
+                    onChange={e => updBadge(id, 'enabled', e.target.checked)}
+                  />
+                  <span>{b.enabled ? t('admin.badge_on') : t('admin.badge_off')}</span>
+                </label>
+              </div>
+            );
+          })}
+        </div>
+      </SettingsCard>
+
+      <SettingsCard title={t('admin.badge_thresholds')}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
+          <NumField label={t('admin.badge_centurion_points')} value={config.thresholds.centurion_points}
+            onChange={v => updThreshold('centurion_points', v)} />
+          <NumField label={t('admin.badge_min_predictions')} value={config.thresholds.min_predictions}
+            onChange={v => updThreshold('min_predictions', v)} />
+          <NumField label={t('admin.badge_min_streak')} value={config.thresholds.min_streak}
+            onChange={v => updThreshold('min_streak', v)} />
+        </div>
+      </SettingsCard>
+
+      <button className="btn btn-pitch" onClick={save} disabled={busy || !dirty}>
+        {busy ? t('common.saving') : t('common.save_all')}
+      </button>
     </div>
   );
 }
