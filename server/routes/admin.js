@@ -393,6 +393,47 @@ router.get('/footer-docs', async (req, res) => {
   }
 });
 
+router.post('/contact-messages/:id/handle', async (req, res) => {
+  try {
+    await db.tx(async (t) => seedFooterDocuments(t));
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: 'פנייה לא תקינה' });
+    }
+    const current = await db.one('SELECT id FROM contact_messages WHERE id = ?', [id]);
+    if (!current) return res.status(404).json({ error: 'הפנייה לא נמצאה' });
+    await db.run('UPDATE contact_messages SET handled_at = CURRENT_TIMESTAMP WHERE id = ?', [id]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('admin/contact-messages/handle:', e);
+    res.status(500).json({ error: 'עדכון הפנייה נכשל' });
+  }
+});
+
+router.delete('/contact-messages/:id', async (req, res) => {
+  try {
+    await db.tx(async (t) => seedFooterDocuments(t));
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: 'פנייה לא תקינה' });
+    }
+    const current = await db.one('SELECT id, image_url FROM contact_messages WHERE id = ?', [id]);
+    if (!current) return res.status(404).json({ error: 'הפנייה לא נמצאה' });
+    await db.run('DELETE FROM contact_messages WHERE id = ?', [id]);
+
+    if (current.image_url) {
+      const relative = current.image_url.replace(/^\/data\//, '');
+      const fullPath = path.join(__dirname, '..', '..', 'data', relative);
+      await fs.promises.unlink(fullPath).catch(() => null);
+    }
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('admin/contact-messages/delete:', e);
+    res.status(500).json({ error: 'מחיקת הפנייה נכשלה' });
+  }
+});
+
 router.post('/footer-docs/:key', upload.single('file'), async (req, res) => {
   try {
     await db.tx(async (t) => seedFooterDocuments(t));

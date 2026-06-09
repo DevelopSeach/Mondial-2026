@@ -23,6 +23,7 @@ const CONTACT_MESSAGES_DDL = `
     phone_number  VARCHAR(32)     NULL,
     message       TEXT            NOT NULL,
     image_url     VARCHAR(500)    NULL,
+    handled_at    DATETIME        NULL,
     created_at    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_contact_created (created_at),
     CONSTRAINT fk_contact_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
@@ -32,6 +33,16 @@ const CONTACT_MESSAGES_DDL = `
 async function ensureFooterContentTables(tx = db) {
   await tx.query(FOOTER_DOCS_DDL);
   await tx.query(CONTACT_MESSAGES_DDL);
+  const handledCol = await tx.one(`
+    SELECT COUNT(*) AS n
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = 'contact_messages'
+      AND column_name = 'handled_at'
+  `);
+  if (!handledCol?.n) {
+    await tx.query('ALTER TABLE contact_messages ADD COLUMN handled_at DATETIME NULL AFTER image_url');
+  }
 }
 
 async function seedFooterDocuments(tx = db) {

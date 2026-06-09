@@ -881,6 +881,8 @@ function SettingsTab() {
   const [footerDocs, setFooterDocs] = useState([]);
   const [footerDrafts, setFooterDrafts] = useState({});
   const [contactMessages, setContactMessages] = useState([]);
+  const [contactListOpen, setContactListOpen] = useState(false);
+  const [contactActionId, setContactActionId] = useState(null);
   const [savingDocKey, setSavingDocKey] = useState(null);
   const [err, setErr] = useState('');
   const [ok, setOk]   = useState('');
@@ -946,6 +948,37 @@ function SettingsTab() {
       setErr(errMsg(e));
     } finally {
       setSavingDocKey(null);
+    }
+  };
+
+  const markContactHandled = async (id) => {
+    setContactActionId(id);
+    setErr('');
+    setOk('');
+    try {
+      await api.post(`/admin/contact-messages/${id}/handle`);
+      setContactMessages((prev) => prev.map((item) => item.id === id ? { ...item, handled_at: new Date().toISOString() } : item));
+      setOk('הפנייה סומנה כטופלה');
+    } catch (e) {
+      setErr(errMsg(e));
+    } finally {
+      setContactActionId(null);
+    }
+  };
+
+  const deleteContact = async (id) => {
+    if (!confirm('למחוק את הפנייה?')) return;
+    setContactActionId(id);
+    setErr('');
+    setOk('');
+    try {
+      await api.delete(`/admin/contact-messages/${id}`);
+      setContactMessages((prev) => prev.filter((item) => item.id !== id));
+      setOk('הפנייה נמחקה');
+    } catch (e) {
+      setErr(errMsg(e));
+    } finally {
+      setContactActionId(null);
     }
   };
 
@@ -1078,29 +1111,11 @@ function SettingsTab() {
 
       <SettingsCard title="צור קשר">
         <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 0 }}>
-          משתמשים שולחים שם, טלפון, טקסט ותמונה. הפניות יופיעו כאן לפי סדר חדש לישן.
+          משתמשים שולחים שם, טלפון, טקסט ותמונה. פתח את רשימת הפניות כדי לסמן טופל או למחוק.
         </p>
-        <div style={{ display: 'grid', gap: 12 }}>
-          {contactMessages.map((item) => (
-            <div key={item.id} style={{ border: '1px solid var(--line)', padding: 16, borderRadius: 6 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                <strong>{item.name}</strong>
-                <span style={{ color: 'var(--muted)', fontSize: 13 }}>
-                  {new Date(item.created_at).toLocaleString('he-IL')}
-                </span>
-              </div>
-              <div style={{ color: 'var(--muted)', fontSize: 14, marginTop: 6 }}>
-                טלפון: {item.phone_number || '—'}
-                {item.user_email ? ` | משתמש: ${item.user_email}` : ''}
-              </div>
-              <p style={{ marginBottom: item.image_url ? 12 : 0 }}>{item.message}</p>
-              {item.image_url && <img src={item.image_url} alt={item.name} className="schedule-admin-preview" />}
-            </div>
-          ))}
-          {contactMessages.length === 0 && (
-            <div style={{ color: 'var(--muted)' }}>אין פניות עדיין.</div>
-          )}
-        </div>
+        <button className="btn btn-outline" onClick={() => setContactListOpen(true)}>
+          פתח רשימת פניות ({contactMessages.length})
+        </button>
       </SettingsCard>
 
       <button
@@ -1111,6 +1126,50 @@ function SettingsTab() {
       >
         {dirty ? 'שמור שינויים' : 'אין שינויים'}
       </button>
+
+      {contactListOpen && (
+        <div className="admin-modal-backdrop" onClick={() => setContactListOpen(false)}>
+          <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="admin-modal-head">
+              <h3>רשימת פניות צור קשר</h3>
+              <button className="btn btn-sm btn-outline" onClick={() => setContactListOpen(false)}>סגור</button>
+            </div>
+
+            <div style={{ display: 'grid', gap: 12 }}>
+              {contactMessages.map((item) => (
+                <div key={item.id} style={{ border: '1px solid var(--line)', padding: 16, borderRadius: 6, background: item.handled_at ? 'rgba(45,110,62,0.08)' : 'var(--paper-pure)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                    <strong>{item.name}</strong>
+                    <span style={{ color: 'var(--muted)', fontSize: 13 }}>
+                      {new Date(item.created_at).toLocaleString('he-IL')}
+                    </span>
+                  </div>
+                  <div style={{ color: 'var(--muted)', fontSize: 14, marginTop: 6 }}>
+                    טלפון: {item.phone_number || '—'}
+                    {item.user_email ? ` | משתמש: ${item.user_email}` : ''}
+                    {item.handled_at ? ` | טופל` : ''}
+                  </div>
+                  <p style={{ marginBottom: item.image_url ? 12 : 12 }}>{item.message}</p>
+                  {item.image_url && <img src={item.image_url} alt={item.name} className="schedule-admin-preview" />}
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+                    {!item.handled_at && (
+                      <button className="btn btn-sm btn-pitch" onClick={() => markContactHandled(item.id)} disabled={contactActionId === item.id}>
+                        {contactActionId === item.id ? 'מעדכן...' : 'טופל'}
+                      </button>
+                    )}
+                    <button className="btn btn-sm btn-outline" onClick={() => deleteContact(item.id)} disabled={contactActionId === item.id}>
+                      {contactActionId === item.id ? 'מוחק...' : 'מחק'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {contactMessages.length === 0 && (
+                <div style={{ color: 'var(--muted)' }}>אין פניות עדיין.</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

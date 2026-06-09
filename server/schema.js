@@ -134,6 +134,7 @@ module.exports = [
     phone_number  VARCHAR(32)     NULL,
     message       TEXT            NOT NULL,
     image_url     VARCHAR(500)    NULL,
+    handled_at    DATETIME        NULL,
     created_at    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_contact_created (created_at),
     CONSTRAINT fk_contact_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
