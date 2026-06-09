@@ -6,6 +6,10 @@ const path = require('path');
 const THEMES_DIR = path.join(__dirname, '..', '..', 'resources', 'themes');
 const DEFAULT_THEME = 'seach';
 
+// THEME מוגדר ב-.env שבשורש הפרויקט (ולא ב-server/.env). השרת רץ עם cwd=server,
+// לכן טוענים במפורש את ה-.env השורשי כדי לאכלס את process.env.THEME (ללא דריסת קיימים).
+require('dotenv').config({ path: path.join(__dirname, '..', '..', '.env') });
+
 function themeDir(name) {
   return path.join(THEMES_DIR, name);
 }
