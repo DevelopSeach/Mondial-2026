@@ -3,6 +3,7 @@ const express = require('express');
 const db = require('../db');
 const { auth } = require('../middleware/auth');
 const { seedPlayersIfEmpty } = require('../lib/players-catalog');
+const { seedScheduleItems } = require('../lib/schedule-items');
 
 const router = express.Router();
 
@@ -99,15 +100,21 @@ router.post('/match/:id', auth(), async (req, res) => {
 router.post('/special', auth(), async (req, res) => {
   try {
     await seedPlayersIfEmpty();
+    await db.tx(async (t) => seedScheduleItems(t));
     const { champion_code, runner_up_code, top_scorer, top_scorer_player_id } = req.body || {};
 
-    // נעילה בזמן בעיטת הפתיחה של המונדיאל
-    const opener = await db.one(`SELECT MIN(kickoff) AS k FROM matches`);
-    if (opener && opener.k) {
-      const lockHours = Number(await getSetting('lock_hours_before', 1));
-      const openerTime = new Date(opener.k + (String(opener.k).endsWith('Z') ? '' : 'Z')).getTime();
-      if (Date.now() >= openerTime - lockHours * 3600000) {
-        return res.status(403).json({ error: 'נעילה: ניחושים מיוחדים נסגרו עם תחילת הטורניר' });
+    const specialLockRow = await db.one(`
+      SELECT start_at
+      FROM schedule_items
+      WHERE title = 'שמינית הגמר'
+      ORDER BY sort_order ASC, id ASC
+      LIMIT 1
+    `);
+    if (specialLockRow?.start_at) {
+      const raw = String(specialLockRow.start_at);
+      const lockAt = new Date(raw.includes('T') ? raw : `${raw.replace(' ', 'T')}Z`).getTime();
+      if (Date.now() >= lockAt) {
+        return res.status(403).json({ error: 'נעילה: ניחושים מיוחדים נסגרו עם תחילת שמינית הגמר' });
       }
     }
 

@@ -35,6 +35,7 @@ export default function Predictions() {
   const [teams, setTeams] = useState([]);
   const [predictions, setPredictions] = useState({});  // matchId -> {home, away, points, locked, saved}
   const [special, setSpecial] = useState({ champion_code: '', runner_up_code: '', top_scorer: '' });
+  const [specialLocked, setSpecialLocked] = useState(false);
   const [players, setPlayers] = useState([]);
   const [playerSearch, setPlayerSearch] = useState('');
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -51,11 +52,18 @@ export default function Predictions() {
       api.get('/matches'),
       api.get('/teams'),
       api.get('/predictions/my'),
-      api.get('/predictions/players')
-    ]).then(([m, t, p, pl]) => {
+      api.get('/predictions/players'),
+      api.get('/schedule')
+    ]).then(([m, t, p, pl, scheduleRes]) => {
       setMatches(m.data);
       setTeams(t.data);
       setPlayers(pl.data || []);
+      const specialLockRow = (scheduleRes.data || []).find((item) => item.title === 'שמינית הגמר');
+      if (specialLockRow?.start_at) {
+        const raw = String(specialLockRow.start_at);
+        const lockAt = new Date(raw.includes('T') ? raw : `${raw.replace(' ', 'T')}Z`).getTime();
+        setSpecialLocked(Date.now() >= lockAt);
+      }
       const pmap = {};
       for (const pr of p.data.predictions) {
         pmap[pr.match_id] = {
@@ -229,6 +237,7 @@ export default function Predictions() {
           teams={teams}
           players={players}
           special={special}
+          specialLocked={specialLocked}
           playerSearch={playerSearch}
           setPlayerSearch={setPlayerSearch}
           pickerOpen={pickerOpen}
@@ -255,7 +264,7 @@ export default function Predictions() {
                 const finished = m.status === 'finished';
                 const { time } = formatDateTime(m.kickoff);
                 return (
-                  <div key={m.id} className={`prediction-row ${locked ? 'locked' : ''} ${p.points ? 'scored' : ''}`}>
+                  <div key={m.id} className={`prediction-row ${locked ? 'locked' : ''} ${finished ? 'finished-result' : ''} ${p.points ? 'scored' : ''}`}>
                     <div className="match-team home">
                       <span className="name">{m.home_name}</span>
                       <Flag code={m.home_code} size="sm" title={m.home_name} />
@@ -303,6 +312,14 @@ export default function Predictions() {
                       {p.saved && !locked && <span style={{color:'var(--pitch)', fontSize:13}}>✓ נשמר</span>}
                       {locked && !finished && <span style={{color:'var(--muted)', fontSize:12}}>🔒 נעול</span>}
                     </div>
+                    {finished && Number.isInteger(p.home) && Number.isInteger(p.away) && (
+                      <div className="prediction-finished-summary">
+                        <span>הניחוש שלי: {p.home} - {p.away}</span>
+                        <span className={`points-pill ${p.points >= 5 ? 'exact' : p.points >= 3 ? 'high' : 'zero'}`}>
+                          {Number(p.points || 0)} נק׳
+                        </span>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -314,7 +331,7 @@ export default function Predictions() {
   );
 }
 
-function SpecialPredictions({ teams, players, special, setSpecial, onSave, saving, playerSearch, setPlayerSearch, pickerOpen, setPickerOpen }) {
+function SpecialPredictions({ teams, players, special, setSpecial, onSave, saving, playerSearch, setPlayerSearch, pickerOpen, setPickerOpen, specialLocked }) {
   const champion = teams.find(t => t.code === special.champion_code);
   const runnerUp = teams.find(t => t.code === special.runner_up_code);
   const selectedPlayer = players.find(p => p.id === special.top_scorer_player_id);
@@ -328,6 +345,9 @@ function SpecialPredictions({ teams, players, special, setSpecial, onSave, savin
   });
   return (
     <>
+    <div style={{fontSize:14, color:'var(--muted)', marginBottom:12}}>
+      ניתן לשנות את הניחוש עד תחילת שמינית הגמר
+    </div>
     <div style={{display:'grid', gap: 18, gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', maxWidth: 900}}>
       <div className="stat-card" style={{borderTop:'4px solid var(--gold)', position:'relative', zIndex:1}}>
         <div className="label">🏆 אלופת המונדיאל</div>
@@ -338,7 +358,7 @@ function SpecialPredictions({ teams, players, special, setSpecial, onSave, savin
             <span>{champion.name_he}</span>
           </div>
         )}
-        <select className="field" value={special.champion_code || ''} onChange={e => setSpecial({...special, champion_code: e.target.value})} style={{width:'100%', padding:12}}>
+        <select className="field" value={special.champion_code || ''} onChange={e => setSpecial({...special, champion_code: e.target.value})} style={{width:'100%', padding:12}} disabled={specialLocked}>
           <option value="">בחר נבחרת...</option>
           {teams.map(t => <option key={t.code} value={t.code}>{flagEmojiFromCode(t.code)} {t.name_he}</option>)}
         </select>
@@ -353,7 +373,7 @@ function SpecialPredictions({ teams, players, special, setSpecial, onSave, savin
             <span>{runnerUp.name_he}</span>
           </div>
         )}
-        <select className="field" value={special.runner_up_code || ''} onChange={e => setSpecial({...special, runner_up_code: e.target.value})} style={{width:'100%', padding:12}}>
+        <select className="field" value={special.runner_up_code || ''} onChange={e => setSpecial({...special, runner_up_code: e.target.value})} style={{width:'100%', padding:12}} disabled={specialLocked}>
           <option value="">בחר נבחרת...</option>
           {teams.map(t => <option key={t.code} value={t.code}>{flagEmojiFromCode(t.code)} {t.name_he}</option>)}
         </select>
@@ -371,18 +391,18 @@ function SpecialPredictions({ teams, players, special, setSpecial, onSave, savin
             </div>
           </div>
         ) : <div style={{fontSize:13, color:'var(--muted)', marginBottom:10}}>לא נבחר שחקן</div>}
-        <button className="btn btn-outline" onClick={() => setPickerOpen(true)} type="button">
+        <button className="btn btn-outline" onClick={() => setPickerOpen(true)} type="button" disabled={specialLocked}>
           בחר שחקן
         </button>
       </div>
 
       <div style={{gridColumn: '1 / -1'}}>
-        <button className="btn btn-gold" onClick={onSave} disabled={saving}>
+        <button className="btn btn-gold" onClick={onSave} disabled={saving || specialLocked}>
           {saving ? <span className="spinner" /> : 'שמור ניחושים מיוחדים'}
         </button>
       </div>
     </div>
-    {pickerOpen && (
+    {pickerOpen && !specialLocked && (
       <div className="player-picker-overlay" onClick={() => setPickerOpen(false)}>
         <div className="player-picker-modal" onClick={(e) => e.stopPropagation()}>
           <div className="player-picker-head">

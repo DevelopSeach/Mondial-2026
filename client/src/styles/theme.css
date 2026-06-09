@@ -716,6 +716,22 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
 }
 .prediction-row.locked { opacity: 0.6; border-inline-start-color: var(--muted); }
 .prediction-row.scored { background: linear-gradient(to inline-end, rgba(45,110,62,0.05), transparent); }
+.prediction-row.finished-result {
+  background: linear-gradient(to inline-end, rgba(45,110,62,0.18), rgba(45,110,62,0.08));
+}
+
+.prediction-finished-summary {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(0, 38, 43, 0.2);
+  color: var(--pitch-deep);
+  font-weight: 700;
+  font-size: 14px;
+}
 
 .score-input {
   width: 56px;
