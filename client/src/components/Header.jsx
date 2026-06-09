@@ -1,8 +1,11 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTranslation } from '../i18n/TranslationContext';
+import LanguageSelector from './LanguageSelector';
 
 export default function Header() {
   const { user, logout } = useAuth();
+  const { t } = useTranslation();
   const nav = useNavigate();
 
   const doLogout = () => { logout(); nav('/login'); };
@@ -12,8 +15,12 @@ export default function Header() {
   return (
     <header className="app-header">
       <div className="header-inner">
+        <div className="header-left-tools">
+          <LanguageSelector compact />
+        </div>
+
         <div className="header-right-brand">
-          <img className="header-logo-large" src="/shiah-logo-white.png" alt="לוגו שיח" />
+          <img className="header-logo-large" src="/shiah-logo-white.png" alt="Shiah logo" />
           {user?.profile_image_url ? (
             <img className="header-avatar" src={user.profile_image_url} alt={user.name} />
           ) : (
@@ -22,22 +29,22 @@ export default function Header() {
         </div>
 
         <nav className="nav">
-          <NavLink to="/" end className={({isActive}) => 'nav-link' + (isActive ? ' active' : '')}>בית</NavLink>
-          <NavLink to="/predictions" className={({isActive}) => 'nav-link' + (isActive ? ' active' : '')}>הניחושיח שלי</NavLink>
-          <NavLink to="/matches" className={({isActive}) => 'nav-link' + (isActive ? ' active' : '')}>משחקים</NavLink>
-          <NavLink to="/schedule" className={({isActive}) => 'nav-link' + (isActive ? ' active' : '')}>לוז ופרסים</NavLink>
-          <NavLink to="/groups" className={({isActive}) => 'nav-link' + (isActive ? ' active' : '')}>בתים</NavLink>
-          <NavLink to="/leaderboard" className={({isActive}) => 'nav-link' + (isActive ? ' active' : '')}>טבלת מצטיינים</NavLink>
-          <NavLink to="/profile" className={({isActive}) => 'nav-link' + (isActive ? ' active' : '')}>פרופיל אישי</NavLink>
+          <NavLink to="/" end className={({isActive}) => 'nav-link' + (isActive ? ' active' : '')}>{t('nav.home')}</NavLink>
+          <NavLink to="/predictions" className={({isActive}) => 'nav-link' + (isActive ? ' active' : '')}>{t('nav.predictions')}</NavLink>
+          <NavLink to="/matches" className={({isActive}) => 'nav-link' + (isActive ? ' active' : '')}>{t('nav.matches')}</NavLink>
+          <NavLink to="/schedule" className={({isActive}) => 'nav-link' + (isActive ? ' active' : '')}>{t('nav.schedule')}</NavLink>
+          <NavLink to="/groups" className={({isActive}) => 'nav-link' + (isActive ? ' active' : '')}>{t('nav.groups')}</NavLink>
+          <NavLink to="/leaderboard" className={({isActive}) => 'nav-link' + (isActive ? ' active' : '')}>{t('nav.leaderboard')}</NavLink>
+          <NavLink to="/profile" className={({isActive}) => 'nav-link' + (isActive ? ' active' : '')}>{t('nav.profile')}</NavLink>
           {user.isAdmin && (
-            <NavLink to="/admin" className={({isActive}) => 'nav-link' + (isActive ? ' active' : '')}>ניהול</NavLink>
+            <NavLink to="/admin" className={({isActive}) => 'nav-link' + (isActive ? ' active' : '')}>{t('nav.admin')}</NavLink>
           )}
         </nav>
 
         <span className="user-chip">
           <span>{user.name}</span>
         </span>
-        <button className="btn-logout" onClick={doLogout}>יציאה</button>
+        <button className="btn-logout" onClick={doLogout}>{t('nav.logout')}</button>
       </div>
     </header>
   );

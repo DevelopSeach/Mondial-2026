@@ -106,7 +106,7 @@ router.post('/special', auth(), async (req, res) => {
     const specialLockRow = await db.one(`
       SELECT start_at
       FROM schedule_items
-      WHERE title = 'שמינית הגמר'
+      WHERE title = 'סגירת ניחושים מיוחדים'
       ORDER BY sort_order ASC, id ASC
       LIMIT 1
     `);
@@ -114,7 +114,7 @@ router.post('/special', auth(), async (req, res) => {
       const raw = String(specialLockRow.start_at);
       const lockAt = new Date(raw.includes('T') ? raw : `${raw.replace(' ', 'T')}Z`).getTime();
       if (Date.now() >= lockAt) {
-        return res.status(403).json({ error: 'נעילה: ניחושים מיוחדים נסגרו עם תחילת שמינית הגמר' });
+        return res.status(403).json({ error: 'נעילה: ניחושים מיוחדים נסגרו ב-8.7 בשעה 12:00' });
       }
     }
 

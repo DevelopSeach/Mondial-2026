@@ -45,6 +45,15 @@ module.exports = [
     prize_slot: null
   },
   {
+    title: 'סגירת ניחושים מיוחדים',
+    date_label: '8.7.2026 · 12:00',
+    description: 'מועד אחרון לעדכון אלופה, סגנית האלופה ומלך השערים',
+    start_at: '2026-07-08 12:00:00',
+    end_at: '2026-07-08 12:00:00',
+    sort_order: 55,
+    prize_slot: null
+  },
+  {
     title: 'רבע הגמר',
     date_label: '9.7–11.7',
     description: '8 האחרונות',

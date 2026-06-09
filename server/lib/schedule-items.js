@@ -30,8 +30,6 @@ async function ensureScheduleItemsTable(tx = db) {
 
 async function seedScheduleItems(tx = db) {
   await ensureScheduleItemsTable(tx);
-  const row = await tx.one('SELECT COUNT(*) AS n FROM schedule_items');
-  if (Number(row?.n || 0) > 0) return 0;
   for (const item of defaults) {
     await tx.run(`
       INSERT INTO schedule_items (
@@ -39,6 +37,13 @@ async function seedScheduleItems(tx = db) {
         prize_image_url, winner_user_id, popup_enabled, popup_title, popup_image_url
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, 0, NULL, NULL)
+      ON DUPLICATE KEY UPDATE
+        date_label = VALUES(date_label),
+        description = VALUES(description),
+        start_at = VALUES(start_at),
+        end_at = VALUES(end_at),
+        sort_order = VALUES(sort_order),
+        prize_slot = VALUES(prize_slot)
     `, [
       item.title,
       item.date_label,

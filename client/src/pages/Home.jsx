@@ -3,9 +3,11 @@ import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import Flag from '../components/Flag';
 import MatchCard from '../components/MatchCard';
+import { useTranslation } from '../i18n/TranslationContext';
 
 export default function Home() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [matches, setMatches] = useState([]);
   const [myPredictions, setMyPredictions] = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
@@ -54,7 +56,7 @@ export default function Home() {
     const home = Number(draft.home);
     const away = Number(draft.away);
     if (!Number.isInteger(home) || !Number.isInteger(away) || home < 0 || away < 0 || home > 30 || away > 30) {
-      setMsg('יש להזין תוצאה תקינה (0-30)');
+      setMsg(t('home.invalid_score'));
       return;
     }
     setSaving(true);
@@ -64,9 +66,9 @@ export default function Home() {
       const updated = await api.get('/predictions/my');
       setMyPredictions(updated.data.predictions || []);
       setEditingMatchId(null);
-      setMsg('✓ הניחוש נשמר');
+      setMsg(t('home.saved'));
     } catch (e) {
-      setMsg(e?.response?.data?.error || 'שגיאה בשמירה');
+      setMsg(e?.response?.data?.error || t('home.save_error'));
     } finally {
       setSaving(false);
     }
@@ -84,38 +86,38 @@ export default function Home() {
   return (
     <main className="page">
       <div className="trophy-banner">
-        <h2>שלום {user.name}<span style={{color:'var(--gold)'}}> ⚽</span></h2>
-        <p>זה הזמן לחזק את הניחושים שלך. ככל שתחזה מוקדם — כך תשמור על הסיכוי לנקודות מירביות.</p>
+        <h2>{t('home.greeting', { name: user.name })}<span style={{color:'var(--gold)'}}> ⚽</span></h2>
+        <p>{t('home.banner_copy')}</p>
       </div>
 
       <div className="stats-grid">
         <div className="stat-card">
-          <div className="label">המיקום שלי</div>
+          <div className="label">{t('home.my_rank')}</div>
           <div className="value">{myRank ? `#${myRank.rank}` : '—'}</div>
         </div>
         <div className="stat-card">
-          <div className="label">סך הכל נקודות</div>
+          <div className="label">{t('home.total_points')}</div>
           <div className="value" style={{color:'var(--crimson)'}}>{myRank?.total_points ?? 0}</div>
         </div>
         <div className="stat-card">
-          <div className="label">ניחושים מולאו</div>
+          <div className="label">{t('home.filled_predictions')}</div>
           <div className="value">{myPredictions.length} / {matches.length}</div>
         </div>
         <div className="stat-card">
-          <div className="label">קלעים מדויקים</div>
+          <div className="label">{t('home.exact_hits')}</div>
           <div className="value" style={{color:'var(--gold-deep)'}}>{myRank?.exact_hits ?? 0}</div>
         </div>
       </div>
 
       <div className="section-divider">
-        <h2>המשחקים הבאים</h2>
+        <h2>{t('home.next_matches')}</h2>
         <span className="badge">UP NEXT</span>
       </div>
 
       {msg && <div className={`alert ${msg.startsWith('✓') ? 'alert-success' : 'alert-error'}`}>{msg}</div>}
 
       {upcoming.length === 0 ? (
-        <p className="editorial" style={{color:'var(--muted)'}}>אין משחקים קרובים כרגע.</p>
+        <p className="editorial" style={{color:'var(--muted)'}}>{t('home.no_upcoming')}</p>
       ) : (
         <div style={{display: 'grid', gap: 12}}>
           {upcoming.map(m => {
@@ -128,21 +130,21 @@ export default function Home() {
                 <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap'}}>
                   {hasPrediction ? (
                     <span style={{color:'var(--pitch)', fontWeight:700, fontSize:14}}>
-                      הניחוש שלי: {p.home_score} - {p.away_score}
+                      {t('home.my_guess', { home: p.home_score, away: p.away_score })}
                     </span>
                   ) : (
                     <span style={{color:'var(--muted)', fontWeight:600, fontSize:14}}>
-                      אין ניחוש עדיין
+                      {t('home.no_guess')}
                     </span>
                   )}
 
                   {!locked && !inEdit && (
                     <button type="button" className="btn btn-gold btn-sm" onClick={() => openEditor(m)}>
-                      {hasPrediction ? 'ערוך ניחוש' : 'השלם ניחוש'}
+                      {hasPrediction ? t('home.edit_guess') : t('home.complete_guess')}
                     </button>
                   )}
                   {locked && (
-                    <span style={{color:'var(--muted)', fontSize:13}}>🔒 הניחוש נעול (פחות משעה לפתיחה)</span>
+                    <span style={{color:'var(--muted)', fontSize:13}}>{t('home.locked_hint')}</span>
                   )}
                 </div>
 
@@ -166,10 +168,10 @@ export default function Home() {
                       onChange={(e) => setDraft(prev => ({ ...prev, away: e.target.value === '' ? '' : Number(e.target.value) }))}
                     />
                     <button type="button" className="btn btn-pitch btn-sm" onClick={() => savePrediction(m)} disabled={saving}>
-                      {saving ? 'שומר...' : 'שמור'}
+                      {saving ? t('common.saving') : t('common.save')}
                     </button>
                     <button type="button" className="btn btn-outline btn-sm" onClick={() => setEditingMatchId(null)} disabled={saving}>
-                      ביטול
+                      {t('common.cancel')}
                     </button>
                   </div>
                 )}
@@ -181,23 +183,23 @@ export default function Home() {
 
       {upcomingUnpredicted.length > 0 && (
         <div className="alert alert-error" style={{marginTop: 24}}>
-          ⚠️ נותרו <strong>{upcomingUnpredicted.length}</strong> משחקים בלי ניחוש. השלם את הניחושים שלך לפני שיינעלו!
+          {t('home.unpredicted_alert', { count: upcomingUnpredicted.length })}
         </div>
       )}
 
       {topScoredUsers.length > 0 && (
         <>
           <div className="section-divider">
-            <h2>טופ 5</h2>
+            <h2>{t('home.top5')}</h2>
             <span className="badge">LEADERBOARD</span>
           </div>
 
           <table className="leaderboard-table">
             <thead>
               <tr>
-                <th style={{width: 80}}>מקום</th>
-                <th>שחקן</th>
-                <th style={{width: 120, textAlign:'end'}}>נקודות</th>
+                <th style={{width: 80}}>{t('home.place')}</th>
+                <th>{t('home.player')}</th>
+                <th style={{width: 120, textAlign:'end'}}>{t('home.points')}</th>
               </tr>
             </thead>
             <tbody>

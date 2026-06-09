@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import api from '../api/client';
+import { useTranslation } from '../i18n/TranslationContext';
 
 export default function NewsTicker() {
   const [items, setItems] = useState([]);
+  const { t } = useTranslation();
 
   useEffect(() => {
     api.get('/news/sports')
@@ -15,7 +17,7 @@ export default function NewsTicker() {
 
   return (
     <div className="news-ticker" dir="rtl">
-      <div className="news-ticker-label">חדשות</div>
+      <div className="news-ticker-label">{t('common.news')}</div>
       <div className="news-ticker-track">
         <div className="news-ticker-content">
           {loopItems.map((item, index) => (

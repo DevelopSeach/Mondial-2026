@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import api from '../api/client';
+import { useTranslation } from '../i18n/TranslationContext';
+import ScoringSummary from '../components/ScoringSummary';
 
-function formatDate(dateStr) {
-  return new Date(dateStr).toLocaleDateString('he-IL', {
+function formatDate(dateStr, locale) {
+  return new Date(dateStr).toLocaleDateString(locale, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric'
@@ -12,6 +14,7 @@ function formatDate(dateStr) {
 export default function SchedulePrizes() {
   const [items, setItems] = useState([]);
   const [selectedPrize, setSelectedPrize] = useState(null);
+  const { t, locale } = useTranslation();
 
   useEffect(() => {
     api.get('/schedule').then((r) => setItems(r.data || [])).catch(() => setItems([]));
@@ -19,6 +22,7 @@ export default function SchedulePrizes() {
 
   const now = Date.now();
   const nextItem = items.find((item) => new Date(item.end_at).getTime() >= now) || null;
+  const specialLockItem = items.find((item) => item.title === 'סגירת ניחושים מיוחדים') || null;
   const prizeItems = items
     .filter((item) => Number.isInteger(Number(item.prize_slot)) && Number(item.prize_slot) > 0)
     .sort((a, b) => Number(a.prize_slot) - Number(b.prize_slot));
@@ -26,18 +30,20 @@ export default function SchedulePrizes() {
   return (
     <main className="page">
       <h1 className="page-title">
-        לוז <span className="accent">ופרסים</span>
+        {t('schedule.title')}
       </h1>
-      <p className="page-subtitle">שלבי הטורניר, מועדי הביניים, והפרסים שמחולקים לאורך הדרך</p>
+      <p className="page-subtitle">{t('schedule.subtitle')}</p>
+
+      <ScoringSummary specialLockLabel={specialLockItem?.date_label || ''} />
 
       <section className="schedule-layout">
         <div className="schedule-table-card">
           <table className="schedule-table">
             <thead>
               <tr>
-                <th>שלב</th>
-                <th>תאריכים</th>
-                <th>מה קורה</th>
+                <th>{t('schedule.stage')}</th>
+                <th>{t('schedule.dates')}</th>
+                <th>{t('schedule.what_happens')}</th>
               </tr>
             </thead>
             <tbody>
@@ -58,14 +64,14 @@ export default function SchedulePrizes() {
         <aside className="schedule-next-card">
           <div className="schedule-next-arrow">←</div>
           <div className="schedule-next-copy">
-            <strong>היעד הבא</strong>
+            <strong>{t('schedule.next_target')}</strong>
             {nextItem ? (
               <>
                 <div>{nextItem.title}</div>
-                <small>{nextItem.date_label} · {formatDate(nextItem.start_at)}</small>
+                <small>{nextItem.date_label} · {formatDate(nextItem.start_at, locale)}</small>
               </>
             ) : (
-              <small>כל המועדים בטבלה כבר עברו</small>
+              <small>{t('schedule.all_passed')}</small>
             )}
           </div>
         </aside>
@@ -73,7 +79,7 @@ export default function SchedulePrizes() {
 
       <section style={{ marginTop: 28 }}>
         <div className="section-divider">
-          <h2>פרסים</h2>
+          <h2>{t('schedule.prizes')}</h2>
           <span className="badge">PRIZES</span>
         </div>
 
@@ -89,11 +95,11 @@ export default function SchedulePrizes() {
                 disabled={!item}
               >
                 {item?.prize_image_url ? (
-                  <img src={item.prize_image_url} alt={`פרס ${slot}`} />
+                  <img src={item.prize_image_url} alt={t('schedule.prize_label', { slot })} />
                 ) : (
-                  <div className="prize-placeholder">פרס {slot}</div>
+                  <div className="prize-placeholder">{t('schedule.prize_label', { slot })}</div>
                 )}
-                <div className="prize-card-label">פרס {slot}</div>
+                <div className="prize-card-label">{t('schedule.prize_label', { slot })}</div>
               </button>
             );
           })}
@@ -108,7 +114,7 @@ export default function SchedulePrizes() {
                 <h3>{selectedPrize.title}</h3>
                 <p style={{ margin: 0, color: 'var(--muted)' }}>{selectedPrize.description}</p>
               </div>
-              <button className="btn btn-sm btn-outline" onClick={() => setSelectedPrize(null)}>סגור</button>
+              <button className="btn btn-sm btn-outline" onClick={() => setSelectedPrize(null)}>{t('common.close')}</button>
             </div>
 
             {selectedPrize.prize_image_url && (
@@ -120,11 +126,11 @@ export default function SchedulePrizes() {
             )}
 
             <div className="winner-panel">
-              <strong>הזוכה:</strong>
+              <strong>{t('schedule.winner')}</strong>
               {selectedPrize.winner_name ? (
                 <span>{selectedPrize.winner_name}</span>
               ) : (
-                <span style={{ color: 'var(--muted)' }}>טרם נקבע זוכה</span>
+                <span style={{ color: 'var(--muted)' }}>{t('schedule.no_winner')}</span>
               )}
             </div>
           </div>

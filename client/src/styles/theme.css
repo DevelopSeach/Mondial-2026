@@ -48,7 +48,7 @@ body {
   color: var(--ink);
   font-feature-settings: 'kern' 1, 'liga' 1;
   -webkit-font-smoothing: antialiased;
-  direction: rtl;
+  direction: inherit;
 
   /* רקע גלובלי עם תמונה + שכבת קריאות */
   background-image:
@@ -125,6 +125,53 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
   display: flex;
   align-items: center;
   gap: 28px;
+  position: relative;
+}
+
+.header-left-tools {
+  position: absolute;
+  left: 24px;
+  top: 8px;
+  display: flex;
+  align-items: center;
+  z-index: 2;
+}
+
+.language-selector {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 112px;
+}
+
+.language-selector.compact {
+  min-width: 98px;
+}
+
+.language-selector-besd {
+  color: rgba(245,240,230,0.55);
+  font-size: 12px;
+  line-height: 1;
+  text-align: start;
+}
+
+.language-selector-label {
+  color: rgba(245,240,230,0.82);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.language-selector select {
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.08);
+  color: var(--paper);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+.language-selector select option {
+  color: var(--ink);
 }
 
 .header-right-brand {
@@ -427,6 +474,69 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
 
 .schedule-next-copy small {
   color: var(--muted);
+}
+
+.scoring-summary {
+  background: linear-gradient(135deg, rgba(0, 38, 43, 0.96), rgba(0, 61, 67, 0.9));
+  color: var(--paper);
+  border: 1px solid rgba(230, 181, 74, 0.3);
+  box-shadow: var(--shadow-md);
+  padding: 22px 24px;
+  margin-bottom: 22px;
+}
+
+.scoring-summary.compact {
+  margin-top: 16px;
+  margin-bottom: 0;
+}
+
+.scoring-summary-head {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.scoring-summary-head strong {
+  font-family: var(--font-display);
+  font-size: 28px;
+  letter-spacing: 0.05em;
+}
+
+.scoring-summary-head span {
+  color: rgba(245, 240, 230, 0.82);
+}
+
+.scoring-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.scoring-item {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 14px 12px;
+  display: grid;
+  gap: 6px;
+}
+
+.scoring-item b {
+  font-family: var(--font-display);
+  font-size: 32px;
+  color: var(--gold);
+  line-height: 1;
+}
+
+.scoring-item span {
+  font-size: 13px;
+  color: rgba(245, 240, 230, 0.92);
+}
+
+.scoring-summary-note {
+  margin-top: 14px;
+  font-size: 14px;
+  color: var(--gold);
+  font-weight: 700;
 }
 
 .prize-grid {
@@ -1336,11 +1446,16 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
 @media (max-width: 700px) {
   .page { padding: 20px 14px 60px; }
   .header-inner { flex-wrap: wrap; gap: 12px; padding: 12px 14px; }
+  .header-left-tools { position: static; width: 100%; justify-content: flex-start; }
+  .language-selector.compact { min-width: 120px; }
   .nav { width: 100%; overflow-x: auto; }
   .nav-link { font-size: 14px; padding: 6px 10px; }
   .schedule-layout { grid-template-columns: 1fr; }
   .schedule-next-card { min-height: 0; }
   .prize-grid { grid-template-columns: 1fr; }
+  .scoring-summary { padding: 18px 16px; }
+  .scoring-summary-head strong { font-size: 24px; }
+  .scoring-summary-grid { grid-template-columns: 1fr; }
   .schedule-table th,
   .schedule-table td { padding: 12px 10px; font-size: 14px; }
   .news-ticker {

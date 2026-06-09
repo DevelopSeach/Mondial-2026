@@ -6,6 +6,7 @@ const fs = require('fs');
 const multer = require('multer');
 const db = require('../db');
 const { auth, signToken } = require('../middleware/auth');
+const { normalizeLanguage } = require('../lib/translations');
 
 const router = express.Router();
 const upload = multer({
@@ -30,6 +31,16 @@ async function ensureAuthColumns() {
   if (!phoneLoginCol?.n) {
     await db.query('ALTER TABLE users ADD COLUMN password_changed TINYINT(1) NOT NULL DEFAULT 0 AFTER password_hash');
   }
+  const preferredLanguageCol = await db.one(`
+    SELECT COUNT(*) AS n
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = 'users'
+      AND column_name = 'preferred_language'
+  `);
+  if (!preferredLanguageCol?.n) {
+    await db.query("ALTER TABLE users ADD COLUMN preferred_language VARCHAR(8) NOT NULL DEFAULT 'he' AFTER phone_number");
+  }
   authColumnsReady = true;
 }
 
@@ -53,6 +64,7 @@ function sanitize(user) {
     email: user.email,
     name: user.name,
     phone_number: user.phone_number || '',
+    preferred_language: normalizeLanguage(user.preferred_language),
     profile_image_url: user.profile_image_url || '',
     department: user.department || '',
     isAdmin: !!user.is_admin,
@@ -64,7 +76,7 @@ function sanitize(user) {
 router.post('/register', async (req, res) => {
   try {
     await ensureAuthColumns();
-    const { email, name, password, phone_number, department } = req.body || {};
+    const { email, name, password, phone_number, department, preferred_language } = req.body || {};
     if (!email || !name || !password) {
       return res.status(400).json({ error: 'כל השדות נדרשים' });
     }
@@ -77,8 +89,8 @@ router.post('/register', async (req, res) => {
 
     const hash = bcrypt.hashSync(password, 10);
     const r = await db.run(
-      `INSERT INTO users (email, name, phone_number, department, password_hash, password_changed, is_admin) VALUES (?, ?, ?, ?, ?, 1, 0)`,
-      [lower, name.trim(), (phone_number || '').trim() || null, (department || '').trim() || null, hash]
+      `INSERT INTO users (email, name, phone_number, preferred_language, department, password_hash, password_changed, is_admin) VALUES (?, ?, ?, ?, ?, ?, 1, 0)`,
+      [lower, name.trim(), (phone_number || '').trim() || null, normalizeLanguage(preferred_language), (department || '').trim() || null, hash]
     );
     const user = await db.one('SELECT * FROM users WHERE id = ?', [r.insertId]);
     const token = signToken(user);
@@ -153,8 +165,10 @@ router.post('/change-password', auth(), async (req, res) => {
 // עדכון פרופיל בסיסי (טלפון + תמונת פרופיל)
 router.post('/profile', auth(), upload.single('profile_image'), async (req, res) => {
   try {
+    await ensureAuthColumns();
     await ensureProfileImageColumn();
     const phone = String(req.body?.phone_number || '').trim();
+    const preferredLanguage = normalizeLanguage(req.body?.preferred_language);
     const user = await db.one('SELECT * FROM users WHERE id = ?', [req.user.id]);
     if (!user) return res.status(404).json({ error: 'משתמש לא נמצא' });
 
@@ -186,8 +200,8 @@ router.post('/profile', auth(), upload.single('profile_image'), async (req, res)
     }
 
     await db.run(
-      'UPDATE users SET phone_number = ?, profile_image_url = ? WHERE id = ?',
-      [phone || null, profileImageUrl, req.user.id]
+      'UPDATE users SET phone_number = ?, preferred_language = ?, profile_image_url = ? WHERE id = ?',
+      [phone || null, preferredLanguage, profileImageUrl, req.user.id]
     );
     const updatedUser = await db.one('SELECT * FROM users WHERE id = ?', [req.user.id]);
     res.json({ ok: true, user: sanitize(updatedUser) });

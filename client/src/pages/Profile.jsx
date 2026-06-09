@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import api, { errMsg } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useTranslation } from '../i18n/TranslationContext';
 
 export default function Profile() {
   const { user, updateProfile } = useAuth();
+  const { t, language } = useTranslation();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -12,6 +14,7 @@ export default function Profile() {
   const [profileImageFile, setProfileImageFile] = useState(null);
   const [profilePreviewUrl, setProfilePreviewUrl] = useState('');
   const [phoneDraft, setPhoneDraft] = useState(user?.phone_number || '');
+  const [languageDraft, setLanguageDraft] = useState(user?.preferred_language || language);
   const [profileMsg, setProfileMsg] = useState('');
   const [err, setErr] = useState('');
   const [ok, setOk] = useState('');
@@ -21,7 +24,7 @@ export default function Profile() {
     setErr('');
     setOk('');
     if (newPassword !== confirmPassword) {
-      setErr('הסיסמה החדשה ואישור הסיסמה אינם תואמים');
+      setErr(t('profile.password_mismatch'));
       return;
     }
     setBusy(true);
@@ -30,7 +33,7 @@ export default function Profile() {
         current_password: currentPassword,
         new_password: newPassword
       });
-      setOk('הסיסמה עודכנה בהצלחה');
+      setOk(t('profile.password_saved'));
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
@@ -55,15 +58,19 @@ export default function Profile() {
     setPhoneDraft(user?.phone_number || '');
   }, [user?.phone_number]);
 
+  useEffect(() => {
+    setLanguageDraft(user?.preferred_language || language);
+  }, [user?.preferred_language, language]);
+
   const saveProfileDetails = async () => {
     setProfileMsg('');
     setProfileBusy(true);
     try {
-      await updateProfile({ profile_image_file: profileImageFile, phone_number: phoneDraft });
-      setProfileMsg('פרטי הפרופיל נשמרו');
+      await updateProfile({ profile_image_file: profileImageFile, phone_number: phoneDraft, preferred_language: languageDraft });
+      setProfileMsg(t('profile.saved'));
       setProfileImageFile(null);
     } catch (e) {
-      setProfileMsg(errMsg(e, 'שגיאה בשמירת פרופיל'));
+      setProfileMsg(errMsg(e, t('profile.save_error')));
     } finally {
       setProfileBusy(false);
     }
@@ -72,25 +79,25 @@ export default function Profile() {
   return (
     <main className="page">
       <h1 className="page-title">
-        <span className="accent">הפרופיל</span> שלי
+        {t('profile.title')}
       </h1>
-      <p className="page-subtitle">כאן אפשר לעדכן את הסיסמה האישית שלך</p>
+      <p className="page-subtitle">{t('profile.subtitle')}</p>
 
       <div style={{ display: 'grid', gap: 18, maxWidth: 760 }}>
         <div className="stat-card" style={{ borderTop: '4px solid var(--pitch)' }}>
-          <div className="label">פרטי משתמש</div>
+          <div className="label">{t('profile.user_details')}</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginTop: 12 }}>
-            <InfoField label="שם מלא" value={user?.name || '—'} />
-            <InfoField label="אימייל" value={user?.email || '—'} />
-            <InfoField label="טלפון" value={user?.phone_number || '—'} />
-            <InfoField label="מחלקה" value={user?.department || '—'} />
+            <InfoField label={t('login.full_name')} value={user?.name || t('common.none')} />
+            <InfoField label={t('login.email')} value={user?.email || t('common.none')} />
+            <InfoField label={t('profile.phone')} value={user?.phone_number || t('common.none')} />
+            <InfoField label={t('admin.tab_departments')} value={user?.department || t('common.none')} />
           </div>
         </div>
 
         <div className="stat-card" style={{ borderTop: '4px solid var(--crimson)' }}>
-          <div className="label">פרטי פרופיל</div>
+          <div className="label">{t('profile.profile_details')}</div>
           <p style={{ color: 'var(--muted)', marginTop: 8 }}>
-            ניתן לעדכן טלפון ולהחליף את תמונת הפרופיל.
+            {t('profile.profile_help')}
           </p>
 
           <div style={{margin: '12px 0'}}>
@@ -108,7 +115,7 @@ export default function Profile() {
           </div>
 
           <div className="field" style={{maxWidth: 420}}>
-            <label>טלפון</label>
+            <label>{t('profile.phone')}</label>
             <input
               value={phoneDraft}
               onChange={(e) => setPhoneDraft(e.target.value)}
@@ -117,7 +124,16 @@ export default function Profile() {
           </div>
 
           <div className="field" style={{maxWidth: 420}}>
-            <label>בחר תמונה חדשה</label>
+            <label>{t('common.language')}</label>
+            <select value={languageDraft} onChange={(e) => setLanguageDraft(e.target.value)}>
+              <option value="he">{t('common.language_he')}</option>
+              <option value="ar">{t('common.language_ar')}</option>
+              <option value="en">{t('common.language_en')}</option>
+            </select>
+          </div>
+
+          <div className="field" style={{maxWidth: 420}}>
+            <label>{t('profile.choose_image')}</label>
             <input
               type="file"
               accept="image/*"
@@ -128,14 +144,14 @@ export default function Profile() {
           {profileMsg && <div className={`alert ${profileMsg.includes('שגיאה') ? 'alert-error' : 'alert-success'}`}>{profileMsg}</div>}
 
           <button className="btn btn-gold" type="button" onClick={saveProfileDetails} disabled={profileBusy}>
-            {profileBusy ? <span className="spinner" /> : 'שמור פרופיל'}
+            {profileBusy ? <span className="spinner" /> : t('profile.save_profile')}
           </button>
         </div>
 
         <form className="stat-card" style={{ borderTop: '4px solid var(--gold)' }} onSubmit={submit}>
-          <div className="label">שינוי סיסמה</div>
+          <div className="label">{t('profile.password_change')}</div>
           <p style={{ color: 'var(--muted)', marginTop: 8 }}>
-            יש להזין את הסיסמה הנוכחית ולאחר מכן לבחור סיסמה חדשה.
+            {t('profile.password_help')}
           </p>
 
           {err && <div className="alert alert-error">{err}</div>}
@@ -143,7 +159,7 @@ export default function Profile() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
             <div className="field">
-              <label>סיסמה נוכחית</label>
+              <label>{t('profile.current_password')}</label>
               <input
                 type="password"
                 value={currentPassword}
@@ -153,7 +169,7 @@ export default function Profile() {
               />
             </div>
             <div className="field">
-              <label>סיסמה חדשה</label>
+              <label>{t('profile.new_password')}</label>
               <input
                 type="password"
                 value={newPassword}
@@ -164,7 +180,7 @@ export default function Profile() {
               />
             </div>
             <div className="field">
-              <label>אישור סיסמה חדשה</label>
+              <label>{t('profile.confirm_password')}</label>
               <input
                 type="password"
                 value={confirmPassword}
@@ -177,7 +193,7 @@ export default function Profile() {
           </div>
 
           <button className="btn btn-gold" type="submit" disabled={busy}>
-            {busy ? <span className="spinner" /> : 'שמור סיסמה חדשה'}
+            {busy ? <span className="spinner" /> : t('profile.save_password')}
           </button>
         </form>
       </div>

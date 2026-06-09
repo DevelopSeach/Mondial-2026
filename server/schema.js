@@ -9,6 +9,7 @@ module.exports = [
     email         VARCHAR(190)    NOT NULL UNIQUE,
     name          VARCHAR(120)    NOT NULL,
     phone_number  VARCHAR(32)     NULL,
+    preferred_language VARCHAR(8) NOT NULL DEFAULT 'he',
     profile_image_url VARCHAR(500) NULL,
     department    VARCHAR(120)    NULL,
     password_hash VARCHAR(120)    NOT NULL,
@@ -138,6 +139,17 @@ module.exports = [
     created_at    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_contact_created (created_at),
     CONSTRAINT fk_contact_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  // ────────── תרגומים ──────────
+  `CREATE TABLE IF NOT EXISTS translations (
+    id                INT             AUTO_INCREMENT PRIMARY KEY,
+    translation_key   VARCHAR(160)    NOT NULL,
+    language_code     VARCHAR(8)      NOT NULL,
+    translation_value TEXT            NOT NULL,
+    updated_at        DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_translations_key_lang (translation_key, language_code),
+    INDEX idx_translations_lang (language_code)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
   // ────────── הגדרות מערכת ──────────

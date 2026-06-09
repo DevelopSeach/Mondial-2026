@@ -5,6 +5,7 @@ const multer = require('multer');
 const db = require('../db');
 const { auth } = require('../middleware/auth');
 const { seedFooterDocuments } = require('../lib/footer-content');
+const { seedTranslations, normalizeLanguage, SUPPORTED_LANGUAGES } = require('../lib/translations');
 
 const router = express.Router();
 const upload = multer({
@@ -37,6 +38,54 @@ router.get('/footer-docs', auth(false), async (req, res) => {
     res.json(rows);
   } catch (e) {
     console.error('site/footer-docs:', e);
+    res.status(500).json({ error: 'שגיאת שרת' });
+  }
+});
+
+router.get('/translations', auth(false), async (req, res) => {
+  try {
+    await db.tx(async (t) => seedTranslations(t));
+    const language = normalizeLanguage(String(req.query.lang || 'he').toLowerCase());
+    const rows = await db.query(`
+      SELECT translation_key, translation_value
+      FROM translations
+      WHERE language_code = ?
+      ORDER BY translation_key ASC
+    `, [language]);
+    const items = Object.fromEntries(rows.map((row) => [row.translation_key, row.translation_value]));
+    res.json({ language, supported_languages: SUPPORTED_LANGUAGES, items });
+  } catch (e) {
+    console.error('site/translations:', e);
+    res.status(500).json({ error: 'שגיאת שרת' });
+  }
+});
+
+router.get('/scoring', auth(false), async (req, res) => {
+  try {
+    const keys = [
+      'scoring_exact',
+      'scoring_result',
+      'scoring_goal_diff',
+      'scoring_champion',
+      'scoring_runner_up',
+      'scoring_top_scorer'
+    ];
+    const rows = await db.query(`
+      SELECT \`key\`, \`value\`
+      FROM settings
+      WHERE \`key\` IN (?, ?, ?, ?, ?, ?)
+    `, keys);
+    const values = Object.fromEntries(rows.map((row) => [row.key, Number(row.value || 0)]));
+    res.json({
+      exact: values.scoring_exact || 5,
+      result: values.scoring_result || 3,
+      goalDiff: values.scoring_goal_diff || 1,
+      champion: values.scoring_champion || 20,
+      runnerUp: values.scoring_runner_up || 10,
+      topScorer: values.scoring_top_scorer || 15
+    });
+  } catch (e) {
+    console.error('site/scoring:', e);
     res.status(500).json({ error: 'שגיאת שרת' });
   }
 });

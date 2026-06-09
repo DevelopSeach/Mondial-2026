@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import api from '../api/client';
 import MatchCard from '../components/MatchCard';
+import { useTranslation } from '../i18n/TranslationContext';
 
 export default function Matches() {
+  const { t, locale } = useTranslation();
   const [matches, setMatches] = useState([]);
   const [myPredictions, setMyPredictions] = useState([]);
   const [filter, setFilter] = useState('all');
@@ -43,23 +45,23 @@ export default function Matches() {
   return (
     <main className="page">
       <h1 className="page-title">
-        לוח <span className="accent">המשחקים</span>
+        {t('matches.title')}
       </h1>
-      <p className="page-subtitle">כל 72 משחקי שלב הבתים — תאריכים, אצטדיונים ותוצאות</p>
+      <p className="page-subtitle">{t('matches.subtitle')}</p>
 
       <div className="tabs" style={{flexWrap:'wrap'}}>
-        <button className={`tab ${filter==='all'?'active':''}`} onClick={() => setFilter('all')}>הכל</button>
-        <button className={`tab ${filter==='upcoming'?'active':''}`} onClick={() => setFilter('upcoming')}>קרובים</button>
-        <button className={`tab ${filter==='finished'?'active':''}`} onClick={() => setFilter('finished')}>הסתיימו</button>
+        <button className={`tab ${filter==='all'?'active':''}`} onClick={() => setFilter('all')}>{t('matches.filter_all')}</button>
+        <button className={`tab ${filter==='upcoming'?'active':''}`} onClick={() => setFilter('upcoming')}>{t('matches.filter_upcoming')}</button>
+        <button className={`tab ${filter==='finished'?'active':''}`} onClick={() => setFilter('finished')}>{t('matches.filter_finished')}</button>
         {groupLetters.map(g => (
-          <button key={g} className={`tab ${filter===g?'active':''}`} onClick={() => setFilter(g)}>בית {g}</button>
+          <button key={g} className={`tab ${filter===g?'active':''}`} onClick={() => setFilter(g)}>{t('matches.group_prefix', { group: g })}</button>
         ))}
       </div>
 
       {groups.map(([day, dayMatches]) => (
         <div key={day}>
           <div className="day-label">
-            {new Date(day).toLocaleDateString('he-IL', { weekday:'long', day:'2-digit', month:'long', year:'numeric' })}
+            {new Date(day).toLocaleDateString(locale, { weekday:'long', day:'2-digit', month:'long', year:'numeric' })}
           </div>
           <div style={{display: 'grid', gap: 12}}>
             {dayMatches.map(m => {
@@ -73,17 +75,17 @@ export default function Matches() {
                   <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap'}}>
                     {hasPrediction ? (
                       <span style={{color:'var(--pitch)', fontWeight:700, fontSize:14}}>
-                        הניחוש שלי: {prediction.home_score} - {prediction.away_score}
+                        {t('home.my_guess', { home: prediction.home_score, away: prediction.away_score })}
                       </span>
                     ) : (
                       <span style={{color:'var(--muted)', fontWeight:600, fontSize:14}}>
-                        אין ניחוש שלי למשחק זה
+                        {t('matches.no_prediction')}
                       </span>
                     )}
 
                     {showPoints && (
                       <span className={`points-pill ${points >= 5 ? 'exact' : points >= 3 ? 'high' : 'zero'}`}>
-                        {points} נק׳
+                        {points} {t('common.points')}
                       </span>
                     )}
                   </div>
@@ -94,7 +96,7 @@ export default function Matches() {
         </div>
       ))}
 
-      {groups.length === 0 && <p style={{color:'var(--muted)'}}>אין משחקים לסינון זה.</p>}
+      {groups.length === 0 && <p style={{color:'var(--muted)'}}>{t('matches.no_rows')}</p>}
     </main>
   );
 }

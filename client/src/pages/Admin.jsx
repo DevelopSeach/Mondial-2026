@@ -5,34 +5,35 @@
 import { useEffect, useState } from 'react';
 import api, { errMsg } from '../api/client';
 import Flag from '../components/Flag';
-
-const TABS = [
-  { id: 'overview',  label: 'סקירה'    },
-  { id: 'users',     label: 'משתמשים'  },
-  { id: 'departments', label: 'מחלקות' },
-  { id: 'matches',   label: 'משחקים'   },
-  { id: 'settings',  label: 'הגדרות'   },
-  { id: 'schedule',  label: 'לוז ופרסים' },
-  { id: 'actions',   label: 'פעולות'   }
-];
+import { useTranslation } from '../i18n/TranslationContext';
 
 export default function Admin() {
   const [tab, setTab] = useState('overview');
+  const { t } = useTranslation();
+  const tabs = [
+    { id: 'overview', label: t('admin.tab_overview') },
+    { id: 'users', label: t('admin.tab_users') },
+    { id: 'departments', label: t('admin.tab_departments') },
+    { id: 'matches', label: t('admin.tab_matches') },
+    { id: 'settings', label: t('admin.tab_settings') },
+    { id: 'schedule', label: t('admin.tab_schedule') },
+    { id: 'actions', label: t('admin.tab_actions') }
+  ];
 
   return (
     <div className="page">
       <h1 className="page-title">
-        <span className="accent">ניהול</span> מערכת
+        {t('admin.title')}
       </h1>
-      <p className="page-subtitle">בקרת על · משתמשים · תוצאות · הגדרות</p>
+      <p className="page-subtitle">{t('admin.subtitle')}</p>
 
       <div className="tabs" style={{ marginBottom: 32 }}>
-        {TABS.map(t => (
+        {tabs.map(item => (
           <button
-            key={t.id}
-            className={`tab ${tab === t.id ? 'active' : ''}`}
-            onClick={() => setTab(t.id)}
-          >{t.label}</button>
+            key={item.id}
+            className={`tab ${tab === item.id ? 'active' : ''}`}
+            onClick={() => setTab(item.id)}
+          >{item.label}</button>
         ))}
       </div>
 
@@ -51,6 +52,7 @@ export default function Admin() {
 function OverviewTab() {
   const [stats, setStats] = useState(null);
   const [err, setErr] = useState('');
+  const { t } = useTranslation();
 
   useEffect(() => {
     api.get('/admin/overview')
@@ -64,19 +66,19 @@ function OverviewTab() {
   return (
     <div className="stats-grid">
       <div className="stat-card">
-        <div className="label">משתמשים רשומים</div>
+        <div className="label">{t('admin.overview.users')}</div>
         <div className="value">{stats.users}</div>
       </div>
       <div className="stat-card">
-        <div className="label">סה"כ ניחושים</div>
+        <div className="label">{t('admin.overview.predictions')}</div>
         <div className="value">{stats.predictions}</div>
       </div>
       <div className="stat-card">
-        <div className="label">סה"כ משחקים</div>
+        <div className="label">{t('admin.overview.matches')}</div>
         <div className="value">{stats.matches}</div>
       </div>
       <div className="stat-card">
-        <div className="label">משחקים שהסתיימו</div>
+        <div className="label">{t('admin.overview.finished')}</div>
         <div className="value">{stats.finished}</div>
       </div>
     </div>

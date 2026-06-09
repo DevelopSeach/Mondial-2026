@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useTranslation } from '../i18n/TranslationContext';
 
 export default function Leaderboard() {
   const [rows, setRows] = useState([]);
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   useEffect(() => {
     api.get('/leaderboard').then(r => setRows(r.data));
@@ -21,20 +23,20 @@ export default function Leaderboard() {
   return (
     <main className="page">
       <h1 className="page-title">
-        טבלת <span className="accent">המצטיינים</span>
+        {t('leaderboard.title')}
       </h1>
-      <p className="page-subtitle">דירוג כל העובדים לפי נקודות שנצברו · מתעדכן אוטומטית עם כל משחק שמסתיים</p>
+      <p className="page-subtitle">{t('leaderboard.subtitle')}</p>
 
       <div className="stats-grid" style={{ marginBottom: 20 }}>
         <div className="stat-card">
-          <div className="label">אחוז משתתפים פעילים</div>
+          <div className="label">{t('leaderboard.active_percent')}</div>
           <div className="value">{participantsPercent.toFixed(1)}%</div>
-          <div style={{ color: 'var(--muted)', fontSize: 12 }}>{activeUsers} מתוך {totalUsers}</div>
+          <div style={{ color: 'var(--muted)', fontSize: 12 }}>{t('leaderboard.out_of', { active: activeUsers, total: totalUsers })}</div>
         </div>
         <div className="stat-card">
-          <div className="label">ממוצע ציונים</div>
+          <div className="label">{t('leaderboard.avg_score')}</div>
           <div className="value">{avgScore.toFixed(1)}</div>
-          <div style={{ color: 'var(--muted)', fontSize: 12 }}>נקודות למשתתף</div>
+          <div style={{ color: 'var(--muted)', fontSize: 12 }}>{t('leaderboard.points_per_user')}</div>
         </div>
       </div>
 
@@ -42,12 +44,12 @@ export default function Leaderboard() {
         <table className="leaderboard-table">
           <thead>
             <tr>
-              <th style={{width: 80}}>מקום</th>
-              <th>שם</th>
-              <th style={{width: 90, textAlign:'center'}}>ניחושים</th>
-              <th style={{width: 100, textAlign:'center'}}>מדויקים</th>
-              <th style={{width: 100, textAlign:'center'}}>בונוס</th>
-              <th style={{width: 130, textAlign:'end'}}>סה״כ</th>
+              <th style={{width: 80}}>{t('home.place')}</th>
+              <th>{t('leaderboard.name')}</th>
+              <th style={{width: 90, textAlign:'center'}}>{t('leaderboard.predictions')}</th>
+              <th style={{width: 100, textAlign:'center'}}>{t('leaderboard.exact')}</th>
+              <th style={{width: 100, textAlign:'center'}}>{t('leaderboard.bonus')}</th>
+              <th style={{width: 130, textAlign:'end'}}>{t('leaderboard.total')}</th>
             </tr>
           </thead>
           <tbody>
@@ -71,7 +73,7 @@ export default function Leaderboard() {
                       <strong>{r.name}</strong>
                     </div>
                   </div>
-                  {r.id === user.id && <span style={{marginInlineStart: 8, color:'var(--gold-deep)', fontSize: 11, letterSpacing:'.15em'}}>· זה אני</span>}
+                  {r.id === user.id && <span style={{marginInlineStart: 8, color:'var(--gold-deep)', fontSize: 11, letterSpacing:'.15em'}}>{t('leaderboard.this_is_me')}</span>}
                 </td>
                 <td style={{textAlign:'center', color:'var(--muted)'}}>{r.num_predictions}</td>
                 <td style={{textAlign:'center'}}>
@@ -84,7 +86,7 @@ export default function Leaderboard() {
               </tr>
             ))}
             {visibleRows.length === 0 && (
-              <tr><td colSpan={6} style={{textAlign:'center', color:'var(--muted)', padding:32}}>עדיין אין משתתפים עם יותר מ-3 נקודות.</td></tr>
+              <tr><td colSpan={6} style={{textAlign:'center', color:'var(--muted)', padding:32}}>{t('leaderboard.empty')}</td></tr>
             )}
           </tbody>
         </table>

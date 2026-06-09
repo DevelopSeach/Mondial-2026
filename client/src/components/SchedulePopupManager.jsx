@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useTranslation } from '../i18n/TranslationContext';
 
 export default function SchedulePopupManager() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [items, setItems] = useState([]);
   const [activePopup, setActivePopup] = useState(null);
 
@@ -40,7 +42,7 @@ export default function SchedulePopupManager() {
             <h3>{activePopup.popup_title || activePopup.title}</h3>
             <p style={{ margin: 0, color: 'var(--muted)' }}>{activePopup.date_label}</p>
           </div>
-          <button className="btn btn-sm btn-outline" onClick={closePopup}>סגור</button>
+          <button className="btn btn-sm btn-outline" onClick={closePopup}>{t('common.close')}</button>
         </div>
         <img
           src={activePopup.popup_image_url}

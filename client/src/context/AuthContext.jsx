@@ -27,8 +27,8 @@ export function AuthProvider({ children }) {
     return data.user;
   };
 
-  const register = async (name, email, password) => {
-    const { data } = await api.post('/auth/register', { name, email, password });
+  const register = async (name, email, password, preferred_language) => {
+    const { data } = await api.post('/auth/register', { name, email, password, preferred_language });
     localStorage.setItem('mondial_token', data.token);
     setUser(data.user);
     return data.user;
@@ -39,9 +39,10 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
-  const updateProfile = async ({ phone_number, profile_image_file }) => {
+  const updateProfile = async ({ phone_number, profile_image_file, preferred_language }) => {
     const form = new FormData();
     form.append('phone_number', phone_number || '');
+    if (preferred_language) form.append('preferred_language', preferred_language);
     if (profile_image_file) form.append('profile_image', profile_image_file);
     const { data } = await api.post('/auth/profile', form);
     if (data?.user) setUser(data.user);

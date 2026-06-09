@@ -11,6 +11,7 @@ const { DEFAULT_DEPARTMENTS } = require('./lib/departments');
 const { upsertPlayers, players } = require('./lib/players-catalog');
 const { seedScheduleItems, scheduleDefaults } = require('./lib/schedule-items');
 const { seedFooterDocuments, footerDocumentDefaults } = require('./lib/footer-content');
+const { seedTranslations, translations } = require('./lib/translations');
 
 // ממיר ISO UTC ('2026-06-11T19:00:00Z') לפורמט DATETIME של MySQL ('2026-06-11 19:00:00')
 function isoToMysql(iso) {
@@ -78,6 +79,12 @@ async function seed() {
   });
   console.log(`   ✓ ${footerDocumentDefaults.length} מסמכי פוטר נטענו`);
 
+  // ─────────── תרגומים ───────────
+  await db.tx(async (t) => {
+    await seedTranslations(t);
+  });
+  console.log(`   ✓ ${Object.keys(translations).length} מפתחות תרגום נטענו`);
+
   // ─────────── מנהל ראשוני ───────────
   const adminEmail = (process.env.ADMIN_EMAIL || 'admin@company.local').toLowerCase();
   const adminPass  = process.env.ADMIN_PASSWORD || 'changeme123';
@@ -85,7 +92,7 @@ async function seed() {
   if (!exists) {
     const hash = bcrypt.hashSync(adminPass, 10);
     await db.run(
-      `INSERT INTO users (email, name, password_hash, is_admin) VALUES (?, ?, ?, 1)`,
+      `INSERT INTO users (email, name, password_hash, preferred_language, is_admin) VALUES (?, ?, ?, 'he', 1)`,
       [adminEmail, 'מנהל המערכת', hash]
     );
     console.log(`   ✓ נוצר משתמש מנהל: ${adminEmail} / ${adminPass}`);

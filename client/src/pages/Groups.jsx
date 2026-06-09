@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import api from '../api/client';
 import Flag from '../components/Flag';
+import { useTranslation } from '../i18n/TranslationContext';
 
 export default function Groups() {
   const [standings, setStandings] = useState({});
+  const { t, pickText } = useTranslation();
 
   useEffect(() => {
     api.get('/standings').then(r => setStandings(r.data));
@@ -14,24 +16,24 @@ export default function Groups() {
   return (
     <main className="page">
       <h1 className="page-title">
-        12 ה<span className="accent">בתים</span>
+        {t('groups.title')}
       </h1>
-      <p className="page-subtitle">חלוקת 48 הנבחרות לבתי המונדיאל 2026 — דירוג מתעדכן לפי תוצאות בפועל</p>
+      <p className="page-subtitle">{t('groups.subtitle')}</p>
 
       <div className="groups-grid">
         {groups.map(g => (
-          <GroupCard key={g} letter={g} teams={standings[g]} />
+          <GroupCard key={g} letter={g} teams={standings[g]} t={t} pickText={pickText} />
         ))}
       </div>
     </main>
   );
 }
 
-function GroupCard({ letter, teams }) {
+function GroupCard({ letter, teams, t, pickText }) {
   return (
     <div className="group-card">
       <div className="group-card-head">
-        <span className="label">בית</span>
+        <span className="label">{t('groups.group')}</span>
         <span className="letter">{letter}</span>
       </div>
       <div className="table-wrap">
@@ -39,14 +41,14 @@ function GroupCard({ letter, teams }) {
           <thead>
             <tr>
               <th>#</th>
-              <th style={{textAlign:'start'}}>נבחרת</th>
-              <th>מ</th>
-              <th>נ</th>
-              <th>ת</th>
-              <th>ה</th>
-              <th>שע</th>
-              <th>הפ</th>
-              <th>נק</th>
+              <th style={{textAlign:'start'}}>{t('groups.team')}</th>
+              <th>{t('groups.played')}</th>
+              <th>{t('groups.won')}</th>
+              <th>{t('groups.drawn')}</th>
+              <th>{t('groups.lost')}</th>
+              <th>{t('groups.goals_for')}</th>
+              <th>{t('groups.goal_diff')}</th>
+              <th>{t('groups.points')}</th>
             </tr>
           </thead>
           <tbody>
@@ -55,8 +57,8 @@ function GroupCard({ letter, teams }) {
                 <td style={{color:'var(--muted)', fontWeight:600}}>{i + 1}</td>
                 <td>
                   <div className="team-cell">
-                    <Flag code={t.code} size="sm" title={t.name_he} />
-                    <span>{t.name_he}</span>
+                    <Flag code={t.code} size="sm" title={pickText(t.name_he, t.name_en)} />
+                    <span>{pickText(t.name_he, t.name_en)}</span>
                   </div>
                 </td>
                 <td>{t.played}</td>

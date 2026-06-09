@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import api, { errMsg } from '../api/client';
 import Flag from '../components/Flag';
+import { useTranslation } from '../i18n/TranslationContext';
 
-function formatDateTime(iso) {
+function formatDateTime(iso, locale) {
   const d = new Date(iso);
   return {
-    date: d.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', weekday: 'short' }),
-    time: d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+    date: d.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', weekday: 'short' }),
+    time: d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
   };
 }
 
@@ -31,11 +32,13 @@ function scoreTone(side, home, away) {
 }
 
 export default function Predictions() {
+  const { t, locale, pickText, language } = useTranslation();
   const [matches, setMatches] = useState([]);
   const [teams, setTeams] = useState([]);
   const [predictions, setPredictions] = useState({});  // matchId -> {home, away, points, locked, saved}
   const [special, setSpecial] = useState({ champion_code: '', runner_up_code: '', top_scorer: '' });
   const [specialLocked, setSpecialLocked] = useState(false);
+  const [specialLockLabel, setSpecialLockLabel] = useState('');
   const [players, setPlayers] = useState([]);
   const [playerSearch, setPlayerSearch] = useState('');
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -58,11 +61,12 @@ export default function Predictions() {
       setMatches(m.data);
       setTeams(t.data);
       setPlayers(pl.data || []);
-      const specialLockRow = (scheduleRes.data || []).find((item) => item.title === 'שמינית הגמר');
+      const specialLockRow = (scheduleRes.data || []).find((item) => item.title === 'סגירת ניחושים מיוחדים');
       if (specialLockRow?.start_at) {
         const raw = String(specialLockRow.start_at);
         const lockAt = new Date(raw.includes('T') ? raw : `${raw.replace(' ', 'T')}Z`).getTime();
         setSpecialLocked(Date.now() >= lockAt);
+        setSpecialLockLabel(specialLockRow.date_label || '');
       }
       const pmap = {};
       for (const pr of p.data.predictions) {
@@ -96,7 +100,7 @@ export default function Predictions() {
   const save = async (matchId) => {
     const p = predictions[matchId];
     if (!Number.isInteger(p?.home) || !Number.isInteger(p?.away)) {
-      setMsg('יש להזין שני מספרים תקינים');
+      setMsg(t('predictions.invalid_two_scores'));
       return;
     }
     setSavingId(matchId);
@@ -104,7 +108,7 @@ export default function Predictions() {
     try {
       await api.post(`/predictions/match/${matchId}`, { home_score: p.home, away_score: p.away });
       setPredictions(prev => ({ ...prev, [matchId]: { ...prev[matchId], saved: true } }));
-      setMsg('✓ הניחוש נשמר');
+      setMsg(t('predictions.saved'));
       setTimeout(() => setMsg(''), 2000);
     } catch (e) {
       setMsg(errMsg(e));
@@ -118,7 +122,7 @@ export default function Predictions() {
     try {
       await api.post('/predictions/special', special);
       setSpecialDirty(false);
-      setMsg('✓ ניחושים מיוחדים נשמרו');
+      setMsg(t('predictions.special_saved'));
       setTimeout(() => setMsg(''), 2000);
     } catch (e) { setMsg(errMsg(e)); }
     finally { setSavingSpecial(false); }
@@ -134,12 +138,12 @@ export default function Predictions() {
     const needsSpecialSave = specialDirty;
 
     if (invalidDirty) {
-      setMsg('יש ניחושים לא תקינים. תקן אותם ואז שמור הכל');
+      setMsg(t('predictions.invalid_dirty'));
       return;
     }
 
     if (dirtyMatches.length === 0 && !needsSpecialSave) {
-      setMsg('אין שינויים לשמור');
+      setMsg(t('predictions.no_changes'));
       return;
     }
 
@@ -176,13 +180,13 @@ export default function Predictions() {
 
       if (failedMatches > 0 || specialFailed) {
         const totalFailed = failedMatches + (specialFailed ? 1 : 0);
-        setMsg(`✓ נשמרו ${savedMatches} ניחושים, ${totalFailed} נכשלו`);
+        setMsg(t('predictions.saved_count_failed', { saved: savedMatches, failed: totalFailed }));
       } else if (savedMatches > 0 && needsSpecialSave) {
-        setMsg(`✓ נשמרו ${savedMatches} ניחושים וניחושים מיוחדים`);
+        setMsg(t('predictions.saved_count_and_special', { saved: savedMatches }));
       } else if (savedMatches > 0) {
-        setMsg(`✓ נשמרו ${savedMatches} ניחושים`);
+        setMsg(t('predictions.saved_count', { saved: savedMatches }));
       } else {
-        setMsg('✓ ניחושים מיוחדים נשמרו');
+        setMsg(t('predictions.special_saved'));
       }
       setTimeout(() => setMsg(''), 2000);
     } catch (e) {
@@ -209,18 +213,18 @@ export default function Predictions() {
   return (
     <main className="page">
       <h1 className="page-title">
-        הניחו<span className="word-shiach">שיח</span> שלי
+        {t('predictions.title')}
       </h1>
       <p className="page-subtitle">
-        השלמת {completedCount} מתוך {matches.length} משחקים · כל ניחוש נסגר {lockHours} שעה לפני בעיטת הפתיחה
+        {t('predictions.subtitle', { completed: completedCount, total: matches.length, hours: lockHours })}
       </p>
 
       {msg && <div className={`alert ${msg.startsWith('✓') ? 'alert-success' : 'alert-error'}`} style={{position:'sticky', top: 80, zIndex: 10}}>{msg}</div>}
 
       <div className="predictions-toolbar">
         <div className="tabs">
-          <button className={`tab ${tab==='group'?'active':''}`} onClick={() => setTab('group')}>שלב הבתים</button>
-          <button className={`tab ${tab==='special'?'active':''}`} onClick={() => setTab('special')}>ניחושים מיוחדים</button>
+          <button className={`tab ${tab==='group'?'active':''}`} onClick={() => setTab('group')}>{t('predictions.group_stage')}</button>
+          <button className={`tab ${tab==='special'?'active':''}`} onClick={() => setTab('special')}>{t('predictions.special')}</button>
         </div>
         <button
           type="button"
@@ -228,7 +232,7 @@ export default function Predictions() {
           onClick={saveAll}
           disabled={savingAll || (Object.values(predictions).every(p => p.saved) && !specialDirty)}
         >
-          {savingAll ? <span className="spinner" /> : 'שמור הכל'}
+          {savingAll ? <span className="spinner" /> : t('common.save_all')}
         </button>
       </div>
 
@@ -248,13 +252,18 @@ export default function Predictions() {
           }}
           onSave={saveSpecial}
           saving={savingSpecial}
+          t={t}
+          locale={locale}
+          pickText={pickText}
+          language={language}
+          specialLockLabel={specialLockLabel}
         />
       ) : (
         <>
           {byDay.map(([day, dayMatches]) => (
             <div key={day}>
               <div className="day-label">
-                {new Date(day).toLocaleDateString('he-IL', { weekday:'long', day:'2-digit', month:'long' })}
+                {new Date(day).toLocaleDateString(locale, { weekday:'long', day:'2-digit', month:'long' })}
               </div>
               {dayMatches.map(m => {
                 const p = predictions[m.id] || {};
@@ -262,12 +271,14 @@ export default function Predictions() {
                 const lockTime = kickoff - lockHours * 3600 * 1000;
                 const locked = Date.now() >= lockTime;
                 const finished = m.status === 'finished';
-                const { time } = formatDateTime(m.kickoff);
+                const { time } = formatDateTime(m.kickoff, locale);
+                const homeName = pickText(m.home_name, m.home_name_en);
+                const awayName = pickText(m.away_name, m.away_name_en);
                 return (
                   <div key={m.id} className={`prediction-row ${locked ? 'locked' : ''} ${finished ? 'finished-result' : ''} ${p.points ? 'scored' : ''}`}>
                     <div className="match-team home">
-                      <span className="name">{m.home_name}</span>
-                      <Flag code={m.home_code} size="sm" title={m.home_name} />
+                      <span className="name">{homeName}</span>
+                      <Flag code={m.home_code} size="sm" title={homeName} />
                       <span style={{color:'var(--muted)', fontSize:12, marginInlineStart: 8}}>{time}</span>
                     </div>
 
@@ -292,31 +303,31 @@ export default function Predictions() {
                     </div>
 
                     <div className="match-team away">
-                      <Flag code={m.away_code} size="sm" title={m.away_name} />
-                      <span className="name">{m.away_name}</span>
+                      <Flag code={m.away_code} size="sm" title={awayName} />
+                      <span className="name">{awayName}</span>
                       {(p.actual_home != null && p.actual_away != null) && (
                         <span className="numeric" style={{marginInlineStart: 12, padding:'2px 8px', background:'var(--ink)', color:'var(--gold)', fontSize:14, borderRadius:2}}>
-                          תוצאה: {p.actual_home}–{p.actual_away}
+                          {t('predictions.result', { home: p.actual_home, away: p.actual_away })}
                         </span>
                       )}
                       {p.points != null && p.points > 0 && (
                         <span className={`points-pill ${p.points >= 5 ? 'exact' : p.points >= 3 ? 'high' : ''}`}>
-                          {p.points} נק׳
+                          {p.points} {t('common.points')}
                         </span>
                       )}
                       {!locked && !finished && !p.saved && Number.isInteger(p.home) && (
                         <button className="btn btn-sm btn-pitch" onClick={() => save(m.id)} disabled={savingId === m.id}>
-                          {savingId === m.id ? '...' : 'שמור'}
+                          {savingId === m.id ? '...' : t('common.save')}
                         </button>
                       )}
-                      {p.saved && !locked && <span style={{color:'var(--pitch)', fontSize:13}}>✓ נשמר</span>}
-                      {locked && !finished && <span style={{color:'var(--muted)', fontSize:12}}>🔒 נעול</span>}
+                      {p.saved && !locked && <span style={{color:'var(--pitch)', fontSize:13}}>{t('predictions.saved_mark')}</span>}
+                      {locked && !finished && <span style={{color:'var(--muted)', fontSize:12}}>{t('predictions.locked')}</span>}
                     </div>
                     {finished && Number.isInteger(p.home) && Number.isInteger(p.away) && (
                       <div className="prediction-finished-summary">
-                        <span>הניחוש שלי: {p.home} - {p.away}</span>
+                        <span>{t('home.my_guess', { home: p.home, away: p.away })}</span>
                         <span className={`points-pill ${p.points >= 5 ? 'exact' : p.points >= 3 ? 'high' : 'zero'}`}>
-                          {Number(p.points || 0)} נק׳
+                          {Number(p.points || 0)} {t('common.points')}
                         </span>
                       </div>
                     )}
@@ -331,7 +342,7 @@ export default function Predictions() {
   );
 }
 
-function SpecialPredictions({ teams, players, special, setSpecial, onSave, saving, playerSearch, setPlayerSearch, pickerOpen, setPickerOpen, specialLocked }) {
+function SpecialPredictions({ teams, players, special, setSpecial, onSave, saving, playerSearch, setPlayerSearch, pickerOpen, setPickerOpen, specialLocked, t, pickText, language, specialLockLabel }) {
   const champion = teams.find(t => t.code === special.champion_code);
   const runnerUp = teams.find(t => t.code === special.runner_up_code);
   const selectedPlayer = players.find(p => p.id === special.top_scorer_player_id);
@@ -346,59 +357,59 @@ function SpecialPredictions({ teams, players, special, setSpecial, onSave, savin
   return (
     <>
     <div style={{fontSize:14, color:'var(--muted)', marginBottom:12}}>
-      ניתן לשנות את הניחוש עד תחילת שמינית הגמר
+      {t('predictions.special_lock_note', { date: specialLockLabel || '8.7.2026 · 12:00' })}
     </div>
     <div style={{display:'grid', gap: 18, gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', maxWidth: 900}}>
       <div className="stat-card" style={{borderTop:'4px solid var(--gold)', position:'relative', zIndex:1}}>
-        <div className="label">🏆 אלופת המונדיאל</div>
-        <p style={{fontSize:13, color:'var(--muted)', margin:'4px 0 12px'}}>20 נקודות בניחוש מדויק</p>
+        <div className="label">{t('predictions.champion')}</div>
+        <p style={{fontSize:13, color:'var(--muted)', margin:'4px 0 12px'}}>{t('predictions.exact_20')}</p>
         {champion && (
           <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8, fontSize:13}}>
-            <Flag code={champion.code} size="sm" title={champion.name_he} />
-            <span>{champion.name_he}</span>
+            <Flag code={champion.code} size="sm" title={pickText(champion.name_he, champion.name_en)} />
+            <span>{pickText(champion.name_he, champion.name_en)}</span>
           </div>
         )}
         <select className="field" value={special.champion_code || ''} onChange={e => setSpecial({...special, champion_code: e.target.value})} style={{width:'100%', padding:12}} disabled={specialLocked}>
-          <option value="">בחר נבחרת...</option>
-          {teams.map(t => <option key={t.code} value={t.code}>{flagEmojiFromCode(t.code)} {t.name_he}</option>)}
+          <option value="">{t('common.select_team')}</option>
+          {teams.map(team => <option key={team.code} value={team.code}>{flagEmojiFromCode(team.code)} {pickText(team.name_he, team.name_en)}</option>)}
         </select>
       </div>
 
       <div className="stat-card" style={{borderTop:'4px solid #c9d1d9', position:'relative', zIndex:1}}>
-        <div className="label">🥈 סגנית האלופה</div>
-        <p style={{fontSize:13, color:'var(--muted)', margin:'4px 0 12px'}}>10 נקודות בניחוש מדויק</p>
+        <div className="label">{t('predictions.runner_up')}</div>
+        <p style={{fontSize:13, color:'var(--muted)', margin:'4px 0 12px'}}>{t('predictions.exact_10')}</p>
         {runnerUp && (
           <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8, fontSize:13}}>
-            <Flag code={runnerUp.code} size="sm" title={runnerUp.name_he} />
-            <span>{runnerUp.name_he}</span>
+            <Flag code={runnerUp.code} size="sm" title={pickText(runnerUp.name_he, runnerUp.name_en)} />
+            <span>{pickText(runnerUp.name_he, runnerUp.name_en)}</span>
           </div>
         )}
         <select className="field" value={special.runner_up_code || ''} onChange={e => setSpecial({...special, runner_up_code: e.target.value})} style={{width:'100%', padding:12}} disabled={specialLocked}>
-          <option value="">בחר נבחרת...</option>
-          {teams.map(t => <option key={t.code} value={t.code}>{flagEmojiFromCode(t.code)} {t.name_he}</option>)}
+          <option value="">{t('common.select_team')}</option>
+          {teams.map(team => <option key={team.code} value={team.code}>{flagEmojiFromCode(team.code)} {pickText(team.name_he, team.name_en)}</option>)}
         </select>
       </div>
 
       <div className="stat-card" style={{borderTop:'4px solid var(--crimson)'}}>
-        <div className="label">👑 מלך השערים</div>
-        <p style={{fontSize:13, color:'var(--muted)', margin:'4px 0 12px'}}>15 נקודות בניחוש מדויק</p>
+        <div className="label">{t('predictions.top_scorer')}</div>
+        <p style={{fontSize:13, color:'var(--muted)', margin:'4px 0 12px'}}>{t('predictions.exact_15')}</p>
         {selectedPlayer ? (
           <div style={{display:'flex', gap:10, alignItems:'center', marginBottom:10}}>
             {selectedPlayer.image_url && <img src={selectedPlayer.image_url} alt={selectedPlayer.name_en} style={{width:44, height:44, borderRadius:'50%', objectFit:'cover', border:'2px solid var(--line)'}} />}
             <div style={{lineHeight:1.2}}>
-              <div style={{fontWeight:700}}>{selectedPlayer.name_he}</div>
-              <div style={{fontSize:12, color:'var(--muted)'}}>{selectedPlayer.name_en} · {selectedPlayer.country_he || selectedPlayer.country_en || ''}</div>
+              <div style={{fontWeight:700}}>{pickText(selectedPlayer.name_he, selectedPlayer.name_en)}</div>
+              <div style={{fontSize:12, color:'var(--muted)'}}>{selectedPlayer.name_en} · {(language === 'he' ? (selectedPlayer.country_he || selectedPlayer.country_en) : selectedPlayer.country_en || selectedPlayer.country_he || '')}</div>
             </div>
           </div>
-        ) : <div style={{fontSize:13, color:'var(--muted)', marginBottom:10}}>לא נבחר שחקן</div>}
+        ) : <div style={{fontSize:13, color:'var(--muted)', marginBottom:10}}>{t('predictions.no_player')}</div>}
         <button className="btn btn-outline" onClick={() => setPickerOpen(true)} type="button" disabled={specialLocked}>
-          בחר שחקן
+          {t('predictions.choose_player')}
         </button>
       </div>
 
       <div style={{gridColumn: '1 / -1'}}>
         <button className="btn btn-gold" onClick={onSave} disabled={saving || specialLocked}>
-          {saving ? <span className="spinner" /> : 'שמור ניחושים מיוחדים'}
+          {saving ? <span className="spinner" /> : t('predictions.save_special')}
         </button>
       </div>
     </div>
@@ -406,12 +417,12 @@ function SpecialPredictions({ teams, players, special, setSpecial, onSave, savin
       <div className="player-picker-overlay" onClick={() => setPickerOpen(false)}>
         <div className="player-picker-modal" onClick={(e) => e.stopPropagation()}>
           <div className="player-picker-head">
-            <h3>בחירת מלך השערים</h3>
-            <button type="button" className="btn btn-sm btn-outline" onClick={() => setPickerOpen(false)}>סגור</button>
+            <h3>{t('predictions.top_scorer_picker')}</h3>
+            <button type="button" className="btn btn-sm btn-outline" onClick={() => setPickerOpen(false)}>{t('common.close')}</button>
           </div>
           <input
             className="field"
-            placeholder="חיפוש שחקן / מדינה"
+            placeholder={t('predictions.player_search_placeholder')}
             value={playerSearch}
             onChange={e => setPlayerSearch(e.target.value)}
             style={{width:'100%', padding:12, marginBottom:12}}
@@ -429,15 +440,15 @@ function SpecialPredictions({ teams, players, special, setSpecial, onSave, savin
               >
                 {p.image_url ? <img src={p.image_url} alt={p.name_en} /> : <span className="player-avatar-fallback">👤</span>}
                 <span className="player-item-text">
-                  <strong>{p.name_he}</strong>
+                  <strong>{pickText(p.name_he, p.name_en)}</strong>
                   <small>
-                    {p.name_en} · {p.country_he || p.country_en || ''}
-                    {p.team_code ? <span style={{display:'inline-flex', alignItems:'center', gap:6, marginInlineStart:8}}><Flag code={p.team_code} size="sm" title={p.country_he || p.country_en || p.name_en} /></span> : null}
+                    {p.name_en} · {(language === 'he' ? (p.country_he || p.country_en) : p.country_en || p.country_he || '')}
+                    {p.team_code ? <span style={{display:'inline-flex', alignItems:'center', gap:6, marginInlineStart:8}}><Flag code={p.team_code} size="sm" title={(language === 'he' ? (p.country_he || p.country_en) : p.country_en || p.country_he || p.name_en)} /></span> : null}
                   </small>
                 </span>
               </button>
             ))}
-            {filteredPlayers.length === 0 && <div style={{padding: 12, color:'var(--muted)'}}>אין תוצאות</div>}
+            {filteredPlayers.length === 0 && <div style={{padding: 12, color:'var(--muted)'}}>{t('common.no_results')}</div>}
           </div>
         </div>
       </div>
