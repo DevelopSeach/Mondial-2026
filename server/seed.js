@@ -10,6 +10,7 @@ const matches = require('./data/matches');
 const { DEFAULT_DEPARTMENTS } = require('./lib/departments');
 const { upsertPlayers, players } = require('./lib/players-catalog');
 const { seedScheduleItems, scheduleDefaults } = require('./lib/schedule-items');
+const { seedFooterDocuments, footerDocumentDefaults } = require('./lib/footer-content');
 
 // ממיר ISO UTC ('2026-06-11T19:00:00Z') לפורמט DATETIME של MySQL ('2026-06-11 19:00:00')
 function isoToMysql(iso) {
@@ -70,6 +71,12 @@ async function seed() {
     await seedScheduleItems(t);
   });
   console.log(`   ✓ ${scheduleDefaults.length} שורות לוז ופרסים נטענו`);
+
+  // ─────────── מסמכי פוטר ───────────
+  await db.tx(async (t) => {
+    await seedFooterDocuments(t);
+  });
+  console.log(`   ✓ ${footerDocumentDefaults.length} מסמכי פוטר נטענו`);
 
   // ─────────── מנהל ראשוני ───────────
   const adminEmail = (process.env.ADMIN_EMAIL || 'admin@company.local').toLowerCase();

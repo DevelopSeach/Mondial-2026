@@ -18,6 +18,7 @@ app.use('/docs', express.static(path.join(__dirname, '..', 'docs')));
 // נתיבי API
 app.use('/api/auth',         require('./routes/auth'));
 app.use('/api/news',         require('./routes/news'));
+app.use('/api/site',         require('./routes/site'));
 app.use('/api',              require('./routes/matches'));
 app.use('/api/schedule',     require('./routes/schedule'));
 app.use('/api/predictions',  require('./routes/predictions'));

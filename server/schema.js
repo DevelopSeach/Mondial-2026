@@ -114,6 +114,31 @@ module.exports = [
     CONSTRAINT fk_schedule_winner FOREIGN KEY (winner_user_id) REFERENCES users(id) ON DELETE SET NULL
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
+  // ────────── מסמכי פוטר + צור קשר ──────────
+  `CREATE TABLE IF NOT EXISTS footer_documents (
+    id            INT             AUTO_INCREMENT PRIMARY KEY,
+    doc_key       VARCHAR(40)     NOT NULL UNIQUE,
+    label         VARCHAR(120)    NOT NULL,
+    file_url      VARCHAR(500)    NULL,
+    file_type     VARCHAR(20)     NOT NULL DEFAULT 'pdf',
+    sort_order    INT             NOT NULL DEFAULT 0,
+    created_at    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_footer_docs_sort (sort_order)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  `CREATE TABLE IF NOT EXISTS contact_messages (
+    id            INT             AUTO_INCREMENT PRIMARY KEY,
+    user_id       INT             NULL,
+    name          VARCHAR(120)    NOT NULL,
+    phone_number  VARCHAR(32)     NULL,
+    message       TEXT            NOT NULL,
+    image_url     VARCHAR(500)    NULL,
+    created_at    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_contact_created (created_at),
+    CONSTRAINT fk_contact_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
   // ────────── הגדרות מערכת ──────────
   `CREATE TABLE IF NOT EXISTS settings (
     \`key\`   VARCHAR(80)    NOT NULL PRIMARY KEY,

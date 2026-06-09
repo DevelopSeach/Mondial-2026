@@ -878,12 +878,31 @@ function MatchesTab() {
 function SettingsTab() {
   const [settings, setSettings] = useState({});
   const [draft, setDraft]       = useState({});
+  const [footerDocs, setFooterDocs] = useState([]);
+  const [footerDrafts, setFooterDrafts] = useState({});
+  const [contactMessages, setContactMessages] = useState([]);
+  const [savingDocKey, setSavingDocKey] = useState(null);
   const [err, setErr] = useState('');
   const [ok, setOk]   = useState('');
 
   useEffect(() => {
-    api.get('/admin/settings')
-      .then(r => { setSettings(r.data); setDraft(r.data); })
+    Promise.all([
+      api.get('/admin/settings'),
+      api.get('/admin/footer-docs')
+    ])
+      .then(([settingsRes, footerRes]) => {
+        setSettings(settingsRes.data);
+        setDraft(settingsRes.data);
+        const docs = footerRes.data.docs || [];
+        setFooterDocs(docs);
+        setFooterDrafts(Object.fromEntries(docs.map((doc) => [doc.doc_key, {
+          label: doc.label || '',
+          file: null,
+          file_url: doc.file_url || '',
+          file_type: doc.file_type || 'pdf'
+        }])));
+        setContactMessages(footerRes.data.contacts || []);
+      })
       .catch(e => setErr(errMsg(e)));
   }, []);
 
@@ -897,6 +916,36 @@ function SettingsTab() {
       setOk('ההגדרות נשמרו בהצלחה');
     } catch (e) {
       setErr(errMsg(e));
+    }
+  };
+
+  const saveFooterDoc = async (docKey) => {
+    const draftDoc = footerDrafts[docKey];
+    if (!draftDoc) return;
+    setSavingDocKey(docKey);
+    setErr('');
+    setOk('');
+    try {
+      const form = new FormData();
+      form.append('label', draftDoc.label);
+      if (draftDoc.file) form.append('file', draftDoc.file);
+      const { data } = await api.post(`/admin/footer-docs/${docKey}`, form);
+      const nextDoc = data.doc;
+      setFooterDocs((prev) => prev.map((item) => item.doc_key === docKey ? nextDoc : item));
+      setFooterDrafts((prev) => ({
+        ...prev,
+        [docKey]: {
+          label: nextDoc.label || '',
+          file: null,
+          file_url: nextDoc.file_url || '',
+          file_type: nextDoc.file_type || 'pdf'
+        }
+      }));
+      setOk(`מסמך "${nextDoc.label}" נשמר`);
+    } catch (e) {
+      setErr(errMsg(e));
+    } finally {
+      setSavingDocKey(null);
     }
   };
 
@@ -988,6 +1037,72 @@ function SettingsTab() {
         </div>
       </SettingsCard>
 
+      <SettingsCard title="מסמכי פוטר">
+        <div style={{ display: 'grid', gap: 16 }}>
+          {footerDocs.filter((doc) => doc.doc_key !== 'contact').map((doc) => {
+            const docDraft = footerDrafts[doc.doc_key];
+            if (!docDraft) return null;
+            return (
+              <div key={doc.doc_key} style={{ border: '1px solid var(--line)', padding: 16, borderRadius: 6 }}>
+                <div className="admin-form-grid">
+                  <div className="field">
+                    <label>כותרת</label>
+                    <input
+                      type="text"
+                      value={docDraft.label}
+                      onChange={(e) => setFooterDrafts((s) => ({ ...s, [doc.doc_key]: { ...s[doc.doc_key], label: e.target.value } }))}
+                    />
+                  </div>
+                  <div className="field">
+                    <label>החלפת קובץ</label>
+                    <input
+                      type="file"
+                      accept=".pdf,image/*"
+                      onChange={(e) => setFooterDrafts((s) => ({ ...s, [doc.doc_key]: { ...s[doc.doc_key], file: e.target.files?.[0] || null } }))}
+                    />
+                  </div>
+                </div>
+                {docDraft.file_url && (
+                  <div style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 10 }}>
+                    קובץ נוכחי: {docDraft.file_type === 'image' ? 'תמונה' : 'PDF'}
+                  </div>
+                )}
+                <button className="btn btn-sm btn-gold" onClick={() => saveFooterDoc(doc.doc_key)} disabled={savingDocKey === doc.doc_key}>
+                  {savingDocKey === doc.doc_key ? 'שומר...' : 'שמור מסמך'}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </SettingsCard>
+
+      <SettingsCard title="צור קשר">
+        <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 0 }}>
+          משתמשים שולחים שם, טלפון, טקסט ותמונה. הפניות יופיעו כאן לפי סדר חדש לישן.
+        </p>
+        <div style={{ display: 'grid', gap: 12 }}>
+          {contactMessages.map((item) => (
+            <div key={item.id} style={{ border: '1px solid var(--line)', padding: 16, borderRadius: 6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                <strong>{item.name}</strong>
+                <span style={{ color: 'var(--muted)', fontSize: 13 }}>
+                  {new Date(item.created_at).toLocaleString('he-IL')}
+                </span>
+              </div>
+              <div style={{ color: 'var(--muted)', fontSize: 14, marginTop: 6 }}>
+                טלפון: {item.phone_number || '—'}
+                {item.user_email ? ` | משתמש: ${item.user_email}` : ''}
+              </div>
+              <p style={{ marginBottom: item.image_url ? 12 : 0 }}>{item.message}</p>
+              {item.image_url && <img src={item.image_url} alt={item.name} className="schedule-admin-preview" />}
+            </div>
+          ))}
+          {contactMessages.length === 0 && (
+            <div style={{ color: 'var(--muted)' }}>אין פניות עדיין.</div>
+          )}
+        </div>
+      </SettingsCard>
+
       <button
         className="btn btn-gold"
         onClick={save}
@@ -1062,13 +1177,13 @@ function ActionsTab() {
     setErr(''); setOk(''); setBusy('backup-export');
     try {
       const { data, headers } = await api.get('/admin/site-backup/export', { responseType: 'blob' });
-      const blob = new Blob([data], { type: 'application/sql;charset=utf-8' });
+      const blob = new Blob([data], { type: 'application/gzip' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       const disposition = headers['content-disposition'] || '';
       const match = disposition.match(/filename="([^"]+)"/);
       a.href = url;
-      a.download = match?.[1] || 'site-backup.sql';
+      a.download = match?.[1] || 'site-backup.tar.gz';
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -1083,7 +1198,7 @@ function ActionsTab() {
 
   const importBackup = async () => {
     if (!backupFile) {
-      setErr('יש לבחור קובץ SQL לייבוא');
+      setErr('יש לבחור קובץ גיבוי לייבוא');
       return;
     }
     if (!confirm('ייבוא הגיבוי יחליף את כל נתוני האתר הנוכחיים. להמשיך?')) return;
@@ -1139,7 +1254,7 @@ function ActionsTab() {
           color: 'var(--ink)'
         }}>גיבוי נתוני האתר</h3>
         <p style={{ margin: 0, color: 'var(--muted)', fontSize: 14, lineHeight: 1.6 }}>
-          הורד SQL dump של כל טבלאות האתר או העלה קובץ SQL זהה כדי להחליף את נתוני המערכת הקיימים.
+          הורד גיבוי מלא הכולל את מסד הנתונים, כל התמונות/קבצי הנתונים שהועלו לאתר, וגם את קבצי המסמכים של הפוטר (`תקנון`, `פרטיות`, `Cookies`, `נגישות`, `מפת אתר`). ניתן גם להעלות גיבוי כזה כדי להחליף את נתוני המערכת הקיימים.
         </p>
 
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 16 }}>
@@ -1148,16 +1263,16 @@ function ActionsTab() {
             onClick={downloadBackup}
             disabled={busy !== null}
           >
-            {busy === 'backup-export' ? 'מייצא...' : 'הורד גיבוי SQL'}
+            {busy === 'backup-export' ? 'מייצא...' : 'הורד גיבוי מלא'}
           </button>
         </div>
 
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginTop: 18 }}>
           <label className="btn btn-outline" style={{ cursor: 'pointer' }}>
-            בחר קובץ SQL לייבוא
+            בחר קובץ גיבוי לייבוא
             <input
               type="file"
-              accept=".sql,text/sql,application/sql"
+              accept=".sql,.tar.gz,.tgz,text/sql,application/gzip,application/x-gzip"
               style={{ display: 'none' }}
               onChange={(e) => setBackupFile(e.target.files?.[0] || null)}
             />

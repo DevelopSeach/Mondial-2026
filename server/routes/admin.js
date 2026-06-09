@@ -2,6 +2,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const os = require('os');
 const { spawn } = require('child_process');
 const fs = require('fs');
 const multer = require('multer');
@@ -12,6 +13,7 @@ const { auth, adminOnly } = require('../middleware/auth');
 const { updateMatchScore, runDailyUpdate } = require('../services/scraper');
 const { recalcForMatch } = require('../services/scoring');
 const { seedScheduleItems } = require('../lib/schedule-items');
+const { seedFooterDocuments } = require('../lib/footer-content');
 const {
   DEFAULT_DEPARTMENTS,
   departmentForDemoUser,
@@ -125,11 +127,12 @@ async function listSiteTables() {
   return rows.map((row) => Object.values(row)[0]).filter(Boolean).sort();
 }
 
-function runCommandCapture(command, args) {
+function runCommandCapture(command, args, options = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       env: mysqlCliEnv(),
       stdio: ['ignore', 'pipe', 'pipe']
+      ,...options
     });
 
     const stdout = [];
@@ -165,6 +168,67 @@ function runMysqlImport(sqlBuffer) {
   });
 }
 
+async function createBackupArchive(sqlBuffer) {
+  const tmpRoot = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'mondial-backup-'));
+  const exportRoot = path.join(tmpRoot, 'export');
+  const archivePath = path.join(tmpRoot, 'site-backup.tar.gz');
+  const dataDir = path.join(__dirname, '..', '..', 'data');
+  const docsDir = path.join(__dirname, '..', '..', 'docs');
+  await fs.promises.mkdir(exportRoot, { recursive: true });
+  await fs.promises.writeFile(path.join(exportRoot, 'db.sql'), sqlBuffer);
+  if (fs.existsSync(dataDir)) {
+    await runCommandCapture('cp', ['-a', dataDir, path.join(exportRoot, 'data')]);
+  }
+  if (fs.existsSync(docsDir)) {
+    await runCommandCapture('cp', ['-a', docsDir, path.join(exportRoot, 'docs')]);
+  }
+  await runCommandCapture(
+    'tar',
+    ['-czf', archivePath, 'db.sql', ...(fs.existsSync(path.join(exportRoot, 'data')) ? ['data'] : []), ...(fs.existsSync(path.join(exportRoot, 'docs')) ? ['docs'] : [])],
+    { cwd: exportRoot }
+  );
+  const archive = await fs.promises.readFile(archivePath);
+  await fs.promises.rm(tmpRoot, { recursive: true, force: true });
+  return archive;
+}
+
+async function importBackupArchive(buffer) {
+  const tmpRoot = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'mondial-import-'));
+  const archivePath = path.join(tmpRoot, 'backup.tar.gz');
+  const extractDir = path.join(tmpRoot, 'extract');
+  const liveDataDir = path.join(__dirname, '..', '..', 'data');
+  const liveDocsDir = path.join(__dirname, '..', '..', 'docs');
+  await fs.promises.mkdir(extractDir, { recursive: true });
+  await fs.promises.writeFile(archivePath, buffer);
+  await runCommandCapture('tar', ['-xzf', archivePath, '-C', extractDir]);
+
+  const sqlPath = path.join(extractDir, 'db.sql');
+  if (!fs.existsSync(sqlPath)) {
+    throw new Error('db.sql not found in backup archive');
+  }
+
+  const sqlBuffer = await fs.promises.readFile(sqlPath);
+  await runMysqlImport(sqlBuffer);
+
+  const extractedDataDir = path.join(extractDir, 'data');
+  if (fs.existsSync(extractedDataDir)) {
+    await fs.promises.mkdir(liveDataDir, { recursive: true });
+    const entries = await fs.promises.readdir(liveDataDir);
+    await Promise.all(entries.map((entry) => fs.promises.rm(path.join(liveDataDir, entry), { recursive: true, force: true })));
+    await runCommandCapture('cp', ['-a', `${extractedDataDir}/.`, liveDataDir]);
+  }
+
+  const extractedDocsDir = path.join(extractDir, 'docs');
+  if (fs.existsSync(extractedDocsDir)) {
+    await fs.promises.mkdir(liveDocsDir, { recursive: true });
+    const entries = await fs.promises.readdir(liveDocsDir);
+    await Promise.all(entries.map((entry) => fs.promises.rm(path.join(liveDocsDir, entry), { recursive: true, force: true })));
+    await runCommandCapture('cp', ['-a', `${extractedDocsDir}/.`, liveDocsDir]);
+  }
+
+  await fs.promises.rm(tmpRoot, { recursive: true, force: true });
+}
+
 function normalizeNullable(value) {
   const text = String(value ?? '').trim();
   return text ? text : null;
@@ -189,6 +253,20 @@ async function replaceScheduleAsset(itemId, fieldName, file, suffix) {
   );
 
   return `/data/schedule_items/item-${itemId}/${fileName}`;
+}
+
+async function replaceFooterDocAsset(docKey, file) {
+  const ext = path.extname(file.originalname || '').toLowerCase() || '.pdf';
+  const safeExt = ['.pdf', '.png', '.jpg', '.jpeg', '.webp'].includes(ext) ? ext : '.pdf';
+  const rootDir = path.join(__dirname, '..', '..', 'data', 'footer_docs');
+  await fs.promises.mkdir(rootDir, { recursive: true });
+  const fileName = `${docKey}${safeExt}`;
+  const fullPath = path.join(rootDir, fileName);
+  await fs.promises.writeFile(fullPath, file.buffer);
+  return {
+    url: `/data/footer_docs/${fileName}`,
+    type: safeExt === '.pdf' ? 'pdf' : 'image'
+  };
 }
 
 router.use(auth(), adminOnly);
@@ -291,6 +369,61 @@ router.get('/schedule-items', async (req, res) => {
   } catch (e) {
     console.error('admin/schedule-items/get:', e);
     res.status(500).json({ error: 'שגיאת שרת' });
+  }
+});
+
+router.get('/footer-docs', async (req, res) => {
+  try {
+    await db.tx(async (t) => seedFooterDocuments(t));
+    const docs = await db.query(`
+      SELECT id, doc_key, label, file_url, file_type, sort_order
+      FROM footer_documents
+      ORDER BY sort_order ASC, id ASC
+    `);
+    const contacts = await db.query(`
+      SELECT c.*, u.name AS user_name, u.email AS user_email
+      FROM contact_messages c
+      LEFT JOIN users u ON u.id = c.user_id
+      ORDER BY c.created_at DESC, c.id DESC
+    `);
+    res.json({ docs, contacts });
+  } catch (e) {
+    console.error('admin/footer-docs/get:', e);
+    res.status(500).json({ error: 'שגיאת שרת' });
+  }
+});
+
+router.post('/footer-docs/:key', upload.single('file'), async (req, res) => {
+  try {
+    await db.tx(async (t) => seedFooterDocuments(t));
+    const key = String(req.params.key || '').trim();
+    const doc = await db.one('SELECT * FROM footer_documents WHERE doc_key = ?', [key]);
+    if (!doc) return res.status(404).json({ error: 'מסמך לא נמצא' });
+
+    const label = String(req.body?.label || '').trim() || doc.label;
+    let fileUrl = doc.file_url || null;
+    let fileType = doc.file_type || 'pdf';
+
+    if (req.file) {
+      const uploaded = await replaceFooterDocAsset(key, req.file);
+      fileUrl = uploaded.url;
+      fileType = uploaded.type;
+    }
+
+    await db.run(
+      'UPDATE footer_documents SET label = ?, file_url = ?, file_type = ? WHERE doc_key = ?',
+      [label, fileUrl, fileType, key]
+    );
+
+    const updated = await db.one(`
+      SELECT id, doc_key, label, file_url, file_type, sort_order
+      FROM footer_documents
+      WHERE doc_key = ?
+    `, [key]);
+    res.json({ ok: true, doc: updated });
+  } catch (e) {
+    console.error('admin/footer-docs/save:', e);
+    res.status(500).json({ error: 'שמירת מסמך נכשלה' });
   }
 });
 
@@ -518,11 +651,12 @@ router.get('/site-backup/export', async (req, res) => {
       db.config.database,
       ...tables
     ]);
+    const archive = await createBackupArchive(dump);
     const dateTag = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
 
-    res.setHeader('Content-Type', 'application/sql; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="site-backup-${dateTag}.sql"`);
-    return res.send(dump);
+    res.setHeader('Content-Type', 'application/gzip');
+    res.setHeader('Content-Disposition', `attachment; filename="site-backup-${dateTag}.tar.gz"`);
+    return res.send(archive);
   } catch (e) {
     console.error('admin/site-backup/export:', e);
     res.status(500).json({ error: 'ייצוא הגיבוי נכשל' });
@@ -532,18 +666,24 @@ router.get('/site-backup/export', async (req, res) => {
 // ייבוא SQL שמחליף את נתוני האתר
 router.post('/site-backup/import', upload.single('file'), async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ error: 'יש לבחור קובץ SQL' });
+    if (!req.file) return res.status(400).json({ error: 'יש לבחור קובץ גיבוי' });
 
     const filename = String(req.file.originalname || '').toLowerCase();
-    if (!filename.endsWith('.sql')) {
-      return res.status(400).json({ error: 'יש להעלות קובץ SQL בלבד' });
-    }
     if (!req.file.buffer?.length) {
       return res.status(400).json({ error: 'הקובץ ריק' });
     }
 
-    await runMysqlImport(req.file.buffer);
-    res.json({ ok: true, message: 'הגיבוי יובא והחליף את נתוני האתר' });
+    if (filename.endsWith('.sql')) {
+      await runMysqlImport(req.file.buffer);
+      return res.json({ ok: true, message: 'גיבוי SQL יובא בהצלחה' });
+    }
+
+    if (filename.endsWith('.tar.gz') || filename.endsWith('.tgz')) {
+      await importBackupArchive(req.file.buffer);
+      return res.json({ ok: true, message: 'הגיבוי יובא בהצלחה כולל מסד הנתונים והתמונות' });
+    }
+
+    return res.status(400).json({ error: 'יש להעלות קובץ ‎.sql או ‎.tar.gz' });
   } catch (e) {
     console.error('admin/site-backup/import:', e);
     res.status(500).json({ error: 'ייבוא הגיבוי נכשל' });

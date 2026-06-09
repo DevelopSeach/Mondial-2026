@@ -988,6 +988,15 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
   margin-bottom: 12px;
 }
 
+.doc-modal-image {
+  width: 100%;
+  max-height: min(68vh, 720px);
+  object-fit: contain;
+  border: 1px solid var(--line);
+  background: var(--paper-dim);
+  margin-bottom: 12px;
+}
+
 .admin-form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
