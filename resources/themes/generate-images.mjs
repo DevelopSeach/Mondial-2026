@@ -14,7 +14,7 @@ if (!KEY) { console.error('Missing GEMINI_API_KEY'); process.exit(1); }
 // כל נכס: שם קובץ + פרומפט
 const THEMES = {
   '4pharma': [
-    { file: 'logo.png', prompt: 'A modern minimalist emblem logo for a pharmacy-themed football prediction league named "Pharma Cup 2026". A clean green medical cross elegantly fused with a soccer ball, flat vector style, teal and white palette, centered on a transparent white background, crisp professional healthcare branding, no text.' },
+    { file: 'logo.png', prompt: 'A modern minimalist emblem logo for a pharmacy-themed football prediction league named "Pharma Cup 2026". A soccer ball elegantly fused inside a clean six-pointed Star of David (Magen David), flat vector style, teal and white palette, centered on a solid dark teal background filling the whole frame (hex #10242b, not transparent), crisp professional healthcare branding, no text, no cross.' },
     { file: 'bg1.png', prompt: 'A clean, light, uncluttered background texture for a pharmacy sports web app. Soft teal-to-mint gradient with a very subtle repeating medical-cross pattern and faint soccer pitch line markings, calm and professional, plenty of light negative space so dark text remains readable, high resolution.' },
     { file: 'bg2.png', prompt: 'A calm abstract background for a medical sports dashboard. Pale mint and soft white with delicate molecule and pill silhouettes blended with subtle hexagon pitch patterns, minimal, light, lots of breathing room, high resolution.' }
   ],
