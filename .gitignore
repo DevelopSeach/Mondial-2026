@@ -6,3 +6,6 @@ client/node_modules/
 server/node_modules/
 .codex/
 tmp/
+
+# runtime email-send logs
+data/logs/
