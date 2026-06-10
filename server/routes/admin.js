@@ -65,6 +65,24 @@ function pickField(row, aliases) {
   return '';
 }
 
+// קריאת קובץ משתמשים עם זיהוי קידוד עברית. Excel שומר CSV עברי ב-Windows-1255,
+// וקבצים אחרים עשויים להיות UTF-8 עם/בלי BOM. כך מונעים ג'יבריש בעברית בייבוא.
+function readUsersWorkbook(file) {
+  const buf = file.buffer;
+  const name = String(file.originalname || '').toLowerCase();
+
+  if (!name.endsWith('.csv')) {
+    // xlsx = Unicode תמיד; xls ישן מפוענח דרך טבלאות הקידוד המובנות של SheetJS
+    return XLSX.read(buf, { type: 'buffer' });
+  }
+
+  // CSV: מפענחים כ-UTF-8 (כולל הסרת BOM); אם התוצאה פגומה — נופלים ל-Windows-1255 (עברית מ-Excel)
+  let utf8 = buf.toString('utf8');
+  if (utf8.charCodeAt(0) === 0xFEFF) utf8 = utf8.slice(1); // הסרת BOM של UTF-8
+  if (!utf8.includes('�')) return XLSX.read(utf8, { type: 'string' }); // UTF-8 תקין
+  return XLSX.read(buf, { type: 'buffer', codepage: 1255 }); // עברית Windows-1255
+}
+
 function userExportRows(rows) {
   return rows.map(r => ({
     'שם מלא': r.name || '',
@@ -862,7 +880,8 @@ router.get('/users/export', async (req, res) => {
       const csv = XLSX.utils.sheet_to_csv(ws);
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename="${baseName}.csv"`);
-      return res.send(csv);
+      // BOM כדי ש-Excel יזהה UTF-8 ויציג עברית כראוי (ולא ג'יבריש)
+      return res.send('﻿' + csv);
     }
 
     const bookType = format === 'xls' ? 'xls' : 'xlsx';
@@ -892,11 +911,7 @@ router.post('/users/import', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'מצב ייבוא לא תקין' });
     }
 
-    const filename = req.file.originalname || '';
-    const lower = filename.toLowerCase();
-    const workbook = lower.endsWith('.csv')
-      ? XLSX.read(req.file.buffer.toString('utf8'), { type: 'string' })
-      : XLSX.read(req.file.buffer, { type: 'buffer' });
+    const workbook = readUsersWorkbook(req.file);
 
     const sheetName = workbook.SheetNames[0];
     if (!sheetName) return res.status(400).json({ error: 'הקובץ ריק' });

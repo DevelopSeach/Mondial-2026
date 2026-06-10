@@ -97,6 +97,41 @@ export default function Predictions() {
     }));
   };
 
+  // תוצאה אקראית 0..5 — תוצאות גבוהות (5) נדירות יותר; תיקו אפשרי
+  const randomScore = () => {
+    const weights = [22, 26, 24, 16, 8, 4]; // 0,1,2,3,4,5
+    const total = weights.reduce((a, b) => a + b, 0);
+    let r = Math.random() * total;
+    for (let s = 0; s < weights.length; s++) { r -= weights[s]; if (r < 0) return s; }
+    return 0;
+  };
+
+  // מילוי אקראי של כל הניחושים הריקים (משחקים שלא ננעלו ולא הסתיימו)
+  const randomFill = () => {
+    setPredictions(prev => {
+      const next = { ...prev };
+      let filled = 0;
+      for (const m of matches) {
+        if (m.status === 'finished') continue;
+        const lockTime = new Date(m.kickoff).getTime() - lockHours * 3600 * 1000;
+        if (Date.now() >= lockTime) continue;
+        const cur = next[m.id] || {};
+        const hasHome = Number.isInteger(cur.home);
+        const hasAway = Number.isInteger(cur.away);
+        if (hasHome && hasAway) continue; // לא דורסים ניחוש קיים
+        next[m.id] = {
+          ...cur,
+          home: hasHome ? cur.home : randomScore(),
+          away: hasAway ? cur.away : randomScore(),
+          saved: false
+        };
+        filled++;
+      }
+      if (!filled) setMsg(t('predictions.random_none') || 'אין ניחושים ריקים למילוי');
+      return next;
+    });
+  };
+
   const save = async (matchId) => {
     const p = predictions[matchId];
     if (!Number.isInteger(p?.home) || !Number.isInteger(p?.away)) {
@@ -226,6 +261,16 @@ export default function Predictions() {
           <button className={`tab ${tab==='group'?'active':''}`} onClick={() => setTab('group')}>{t('predictions.group_stage')}</button>
           <button className={`tab ${tab==='special'?'active':''}`} onClick={() => setTab('special')}>{t('predictions.special')}</button>
         </div>
+        {tab === 'group' && (
+          <button
+            type="button"
+            className="btn btn-outline"
+            onClick={randomFill}
+            style={{ marginInlineEnd: 8 }}
+          >
+            מילוי אקראי
+          </button>
+        )}
         <button
           type="button"
           className="btn btn-gold predictions-save-all"
