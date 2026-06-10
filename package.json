@@ -4,7 +4,7 @@
   "private": true,
   "description": "מערכת ניחושי מונדיאל 2026 לחברה - React + Node + MySQL 8 (root workspace)",
   "scripts": {
-    "install:all":  "npm install && npm --prefix server install && npm --prefix client install",
+    "install:all":  "npm install --include=dev && npm --prefix server install --include=dev && npm --prefix client install --include=dev",
     "db:create":    "npm --prefix server run db:create",
     "db:init":      "npm --prefix server run db:init",
     "db:seed":      "npm --prefix server run db:seed",
