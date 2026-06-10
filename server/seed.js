@@ -33,13 +33,14 @@ async function seed() {
   await db.tx(async (t) => {
     for (const x of teams) {
       await t.run(`
-        INSERT INTO teams (code, name_en, name_he, group_letter)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO teams (code, name_en, name_he, name_ar, group_letter)
+        VALUES (?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
           name_en      = VALUES(name_en),
           name_he      = VALUES(name_he),
+          name_ar      = VALUES(name_ar),
           group_letter = VALUES(group_letter)
-      `, [x.code, x.en, x.he, x.group]);
+      `, [x.code, x.en, x.he, x.ar || null, x.group]);
     }
   });
   console.log(`   ✓ ${teams.length} קבוצות נטענו`);

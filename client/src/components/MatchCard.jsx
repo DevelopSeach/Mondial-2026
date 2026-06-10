@@ -15,8 +15,8 @@ export default function MatchCard({ match, children }) {
   const finished = match.status === 'finished';
   const live = match.status === 'live';
   const hasScore = match.home_score != null && match.away_score != null;
-  const homeName = pickText(match.home_name, match.home_name_en);
-  const awayName = pickText(match.away_name, match.away_name_en);
+  const homeName = pickText(match.home_name, match.home_name_en, match.home_name_ar);
+  const awayName = pickText(match.away_name, match.away_name_en, match.away_name_ar);
 
   return (
     <div className={`match-card ${finished ? 'finished' : ''} ${live ? 'live' : ''}`}>

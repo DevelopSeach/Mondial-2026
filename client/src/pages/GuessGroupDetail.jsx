@@ -169,7 +169,7 @@ export default function GuessGroupDetail() {
               <option value="">{t('gg.choose_match')}</option>
               {availableMatches.map(m => (
                 <option key={m.id} value={m.id}>
-                  {pickText(m.home_name, m.home_name_en)} – {pickText(m.away_name, m.away_name_en)}
+                  {pickText(m.home_name, m.home_name_en, m.home_name_ar)} – {pickText(m.away_name, m.away_name_en, m.away_name_ar)}
                 </option>
               ))}
             </select>
@@ -207,9 +207,9 @@ export default function GuessGroupDetail() {
                       <td>
                         <div className="gg-bet-match">
                           <Flag code={b.home_code} size="sm" />
-                          <span>{pickText(b.home_name, b.home_name_en)}</span>
+                          <span>{pickText(b.home_name, b.home_name_en, b.home_name_ar)}</span>
                           <span className="gg-vs">–</span>
-                          <span>{pickText(b.away_name, b.away_name_en)}</span>
+                          <span>{pickText(b.away_name, b.away_name_en, b.away_name_ar)}</span>
                           <Flag code={b.away_code} size="sm" />
                         </div>
                       </td>

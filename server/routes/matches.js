@@ -20,8 +20,8 @@ router.get('/matches', async (req, res) => {
   try {
     const rows = await db.query(`
       SELECT m.*,
-        th.name_he AS home_name, th.name_en AS home_name_en,
-        ta.name_he AS away_name, ta.name_en AS away_name_en
+        th.name_he AS home_name, th.name_en AS home_name_en, th.name_ar AS home_name_ar,
+        ta.name_he AS away_name, ta.name_en AS away_name_en, ta.name_ar AS away_name_ar
       FROM matches m
       JOIN teams th ON th.code = m.home_code
       JOIN teams ta ON ta.code = m.away_code
@@ -38,7 +38,9 @@ router.get('/matches', async (req, res) => {
 router.get('/matches/:id', async (req, res) => {
   try {
     const m = await db.one(`
-      SELECT m.*, th.name_he AS home_name, ta.name_he AS away_name
+      SELECT m.*,
+        th.name_he AS home_name, th.name_en AS home_name_en, th.name_ar AS home_name_ar,
+        ta.name_he AS away_name, ta.name_en AS away_name_en, ta.name_ar AS away_name_ar
       FROM matches m
       JOIN teams th ON th.code = m.home_code
       JOIN teams ta ON ta.code = m.away_code

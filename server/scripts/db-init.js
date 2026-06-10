@@ -105,6 +105,10 @@ async function main() {
   await addColumnIfMissing('users', 'can_guess_groups',
     'ALTER TABLE users ADD COLUMN can_guess_groups TINYINT(1) NOT NULL DEFAULT 0 AFTER is_admin');
 
+  // שם הקבוצה/מדינה בערבית (לתרגום שמות המדינות בכל משחק)
+  await addColumnIfMissing('teams', 'name_ar',
+    'ALTER TABLE teams ADD COLUMN name_ar VARCHAR(80) NULL AFTER name_he');
+
   // תפקיד משתמש: user / manager / admin (מנהל מערכת מלא מקבל admin)
   await addColumnIfMissing('users', 'role',
     "ALTER TABLE users ADD COLUMN role ENUM('user','manager','admin') NOT NULL DEFAULT 'user' AFTER can_guess_groups");

@@ -57,8 +57,8 @@ function GroupCard({ letter, teams, t, pickText }) {
                 <td style={{color:'var(--muted)', fontWeight:600}}>{i + 1}</td>
                 <td>
                   <div className="team-cell">
-                    <Flag code={t.code} size="sm" title={pickText(t.name_he, t.name_en)} />
-                    <span>{pickText(t.name_he, t.name_en)}</span>
+                    <Flag code={t.code} size="sm" title={pickText(t.name_he, t.name_en, t.name_ar)} />
+                    <span>{pickText(t.name_he, t.name_en, t.name_ar)}</span>
                   </div>
                 </td>
                 <td>{t.played}</td>

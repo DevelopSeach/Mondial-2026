@@ -317,8 +317,8 @@ export default function Predictions() {
                 const locked = Date.now() >= lockTime;
                 const finished = m.status === 'finished';
                 const { time } = formatDateTime(m.kickoff, locale);
-                const homeName = pickText(m.home_name, m.home_name_en);
-                const awayName = pickText(m.away_name, m.away_name_en);
+                const homeName = pickText(m.home_name, m.home_name_en, m.home_name_ar);
+                const awayName = pickText(m.away_name, m.away_name_en, m.away_name_ar);
                 return (
                   <div key={m.id} className={`prediction-row ${locked ? 'locked' : ''} ${finished ? 'finished-result' : ''} ${p.points ? 'scored' : ''}`}>
                     <div className="match-team home">
@@ -410,13 +410,13 @@ function SpecialPredictions({ teams, players, special, setSpecial, onSave, savin
         <p style={{fontSize:13, color:'var(--muted)', margin:'4px 0 12px'}}>{t('predictions.exact_20')}</p>
         {champion && (
           <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8, fontSize:13}}>
-            <Flag code={champion.code} size="sm" title={pickText(champion.name_he, champion.name_en)} />
-            <span>{pickText(champion.name_he, champion.name_en)}</span>
+            <Flag code={champion.code} size="sm" title={pickText(champion.name_he, champion.name_en, champion.name_ar)} />
+            <span>{pickText(champion.name_he, champion.name_en, champion.name_ar)}</span>
           </div>
         )}
         <select className="field" value={special.champion_code || ''} onChange={e => setSpecial({...special, champion_code: e.target.value})} style={{width:'100%', padding:12}} disabled={specialLocked}>
           <option value="">{t('common.select_team')}</option>
-          {teams.map(team => <option key={team.code} value={team.code}>{flagEmojiFromCode(team.code)} {pickText(team.name_he, team.name_en)}</option>)}
+          {teams.map(team => <option key={team.code} value={team.code}>{flagEmojiFromCode(team.code)} {pickText(team.name_he, team.name_en, team.name_ar)}</option>)}
         </select>
       </div>
 
@@ -425,13 +425,13 @@ function SpecialPredictions({ teams, players, special, setSpecial, onSave, savin
         <p style={{fontSize:13, color:'var(--muted)', margin:'4px 0 12px'}}>{t('predictions.exact_10')}</p>
         {runnerUp && (
           <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8, fontSize:13}}>
-            <Flag code={runnerUp.code} size="sm" title={pickText(runnerUp.name_he, runnerUp.name_en)} />
-            <span>{pickText(runnerUp.name_he, runnerUp.name_en)}</span>
+            <Flag code={runnerUp.code} size="sm" title={pickText(runnerUp.name_he, runnerUp.name_en, runnerUp.name_ar)} />
+            <span>{pickText(runnerUp.name_he, runnerUp.name_en, runnerUp.name_ar)}</span>
           </div>
         )}
         <select className="field" value={special.runner_up_code || ''} onChange={e => setSpecial({...special, runner_up_code: e.target.value})} style={{width:'100%', padding:12}} disabled={specialLocked}>
           <option value="">{t('common.select_team')}</option>
-          {teams.map(team => <option key={team.code} value={team.code}>{flagEmojiFromCode(team.code)} {pickText(team.name_he, team.name_en)}</option>)}
+          {teams.map(team => <option key={team.code} value={team.code}>{flagEmojiFromCode(team.code)} {pickText(team.name_he, team.name_en, team.name_ar)}</option>)}
         </select>
       </div>
 

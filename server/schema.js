@@ -26,6 +26,7 @@ module.exports = [
     code          VARCHAR(10)     NOT NULL PRIMARY KEY,
     name_en       VARCHAR(80)     NOT NULL,
     name_he       VARCHAR(80)     NOT NULL,
+    name_ar       VARCHAR(80)     NULL,
     group_letter  CHAR(1)         NOT NULL,
     INDEX idx_teams_group (group_letter)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
