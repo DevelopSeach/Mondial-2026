@@ -184,6 +184,42 @@ module.exports = [
     CONSTRAINT fk_group_bet_match FOREIGN KEY (match_id) REFERENCES matches(id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
+  `CREATE TABLE IF NOT EXISTS email_campaigns (
+    id                    INT             AUTO_INCREMENT PRIMARY KEY,
+    created_by_user_id    INT             NULL,
+    subject               VARCHAR(255)    NOT NULL,
+    body                  MEDIUMTEXT      NOT NULL,
+    include_login_details TINYINT(1)      NOT NULL DEFAULT 0,
+    department_filter     VARCHAR(120)    NULL,
+    recipient_count       INT             NOT NULL DEFAULT 0,
+    attachments_json      MEDIUMTEXT      NULL,
+    user_delivery_mode    VARCHAR(20)     NOT NULL DEFAULT 'smtp',
+    sender_email          VARCHAR(190)    NULL,
+    manager_email         VARCHAR(190)    NULL,
+    manager_report_sent   TINYINT(1)      NOT NULL DEFAULT 0,
+    created_at            DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_email_campaigns_created (created_at),
+    CONSTRAINT fk_email_campaigns_user FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  `CREATE TABLE IF NOT EXISTS email_campaign_recipients (
+    id                 INT             AUTO_INCREMENT PRIMARY KEY,
+    campaign_id        INT             NOT NULL,
+    user_id            INT             NULL,
+    recipient_name     VARCHAR(120)    NULL,
+    recipient_email    VARCHAR(190)    NOT NULL,
+    recipient_phone    VARCHAR(32)     NULL,
+    recipient_department VARCHAR(120)  NULL,
+    status             VARCHAR(20)     NOT NULL DEFAULT 'pending',
+    error_message      TEXT            NULL,
+    sent_at            DATETIME        NULL,
+    created_at         DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_email_recipients_campaign (campaign_id),
+    INDEX idx_email_recipients_status (status),
+    CONSTRAINT fk_email_recipients_campaign FOREIGN KEY (campaign_id) REFERENCES email_campaigns(id) ON DELETE CASCADE,
+    CONSTRAINT fk_email_recipients_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
   // ────────── תרגומים ──────────
   `CREATE TABLE IF NOT EXISTS translations (
     id                INT             AUTO_INCREMENT PRIMARY KEY,

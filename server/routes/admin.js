@@ -260,6 +260,43 @@ function buildTransportConfig(settings) {
   };
 }
 
+function buildGmailTransportConfig(settings) {
+  const user = String(settings.gmail_from_email || settings.gmail_user || '').trim();
+  return {
+    service: 'gmail',
+    auth: {
+      type: 'OAuth2',
+      user,
+      clientId: String(settings.gmail_client_id || '').trim(),
+      clientSecret: String(settings.gmail_client_secret || '').trim(),
+      refreshToken: String(settings.gmail_refresh_token || '').trim(),
+      accessToken: String(settings.gmail_access_token || '').trim() || undefined
+    }
+  };
+}
+
+function resolveUserDeliveryMode(settings) {
+  return String(settings.email_user_delivery_mode || 'smtp').trim().toLowerCase() === 'gmail' ? 'gmail' : 'smtp';
+}
+
+function assertSmtpSettings(settings) {
+  if (!settings.smtp_server || !settings.smtp_user || !settings.smtp_password) {
+    throw new Error('יש להגדיר תחילה פרטי SMTP בלשונית ההגדרות');
+  }
+}
+
+function assertGmailSettings(settings) {
+  const required = [
+    'gmail_from_email',
+    'gmail_client_id',
+    'gmail_client_secret',
+    'gmail_refresh_token'
+  ];
+  if (required.some((key) => !String(settings[key] || '').trim())) {
+    throw new Error('יש להגדיר תחילה את כל פרטי Gmail OAuth בלשונית ההגדרות');
+  }
+}
+
 function buildEmailHtml(body, extraLines) {
   const bodyHtml = String(body || '')
     .split(/\r?\n/)
@@ -290,6 +327,33 @@ async function replaceScheduleAsset(itemId, fieldName, file, suffix) {
   );
 
   return `/data/schedule_items/item-${itemId}/${fileName}`;
+}
+
+async function appendEmailSendLog(entry) {
+  const logsDir = path.join(__dirname, '..', '..', 'data', 'logs');
+  await fs.promises.mkdir(logsDir, { recursive: true });
+  const monthKey = new Date().toISOString().slice(0, 7);
+  const logPath = path.join(logsDir, `email-sends-${monthKey}.log`);
+  await fs.promises.appendFile(logPath, `${JSON.stringify(entry)}\n`, 'utf8');
+}
+
+async function removeScheduleAssets(itemId) {
+  const baseDir = path.join(__dirname, '..', '..', 'data', 'schedule_items', `item-${itemId}`);
+  await fs.promises.rm(baseDir, { recursive: true, force: true }).catch(() => null);
+}
+
+async function fetchScheduleItems(tx = db) {
+  return tx.query(`
+    SELECT
+      s.*,
+      u.id AS winner_id,
+      u.name AS winner_name,
+      u.email AS winner_email,
+      u.profile_image_url AS winner_profile_image_url
+    FROM schedule_items s
+    LEFT JOIN users u ON u.id = s.winner_user_id
+    ORDER BY s.sort_order ASC, s.start_at ASC, s.id ASC
+  `);
 }
 
 async function replaceFooterDocAsset(docKey, file) {
@@ -391,21 +455,132 @@ router.get('/departments', async (req, res) => {
 router.get('/schedule-items', async (req, res) => {
   try {
     await db.tx(async (t) => seedScheduleItems(t));
-    const rows = await db.query(`
-      SELECT
-        s.*,
-        u.id AS winner_id,
-        u.name AS winner_name,
-        u.email AS winner_email,
-        u.profile_image_url AS winner_profile_image_url
-      FROM schedule_items s
-      LEFT JOIN users u ON u.id = s.winner_user_id
-      ORDER BY s.sort_order ASC, s.start_at ASC, s.id ASC
-    `);
+    const rows = await fetchScheduleItems();
     res.json(rows);
   } catch (e) {
     console.error('admin/schedule-items/get:', e);
     res.status(500).json({ error: 'שגיאת שרת' });
+  }
+});
+
+router.post('/schedule-items/structure', async (req, res) => {
+  try {
+    const rows = Array.isArray(req.body?.items) ? req.body.items : null;
+    if (!rows || !rows.length) {
+      return res.status(400).json({ error: 'יש לשלוח לפחות שורה אחת ללוז' });
+    }
+
+    const normalized = [];
+    const titleSet = new Set();
+
+    for (let index = 0; index < rows.length; index += 1) {
+      const row = rows[index] || {};
+      const id = Number.parseInt(row.id, 10);
+      const title = String(row.title || '').trim();
+      const dateLabel = String(row.date_label || '').trim();
+      const description = String(row.description || '').trim();
+      const startAt = String(row.start_at || '').trim();
+      const endAt = String(row.end_at || '').trim();
+      const sortOrderRaw = row.sort_order === '' || row.sort_order == null ? index + 1 : row.sort_order;
+      const sortOrder = Number.parseInt(sortOrderRaw, 10);
+      const prizeSlot = row.prize_slot === '' || row.prize_slot == null ? null : Number.parseInt(row.prize_slot, 10);
+      const winnerUserId = row.winner_user_id === '' || row.winner_user_id == null ? null : Number.parseInt(row.winner_user_id, 10);
+      const popupEnabled = !!row.popup_enabled;
+      const popupTitle = normalizeNullable(row.popup_title);
+
+      if (!title || !dateLabel || !description || !startAt || !endAt || !Number.isInteger(sortOrder)) {
+        return res.status(400).json({ error: `יש למלא את כל השדות החובה בשורה ${index + 1}` });
+      }
+      if (titleSet.has(title)) {
+        return res.status(400).json({ error: `נמצאה כותרת כפולה בלוז: ${title}` });
+      }
+      if (prizeSlot != null && (!Number.isInteger(prizeSlot) || prizeSlot < 1 || prizeSlot > 3)) {
+        return res.status(400).json({ error: `ערך פרס לא תקין בשורה ${index + 1}` });
+      }
+      if (winnerUserId != null && !Number.isInteger(winnerUserId)) {
+        return res.status(400).json({ error: `זוכה לא תקין בשורה ${index + 1}` });
+      }
+
+      titleSet.add(title);
+      normalized.push({
+        id: Number.isInteger(id) && id > 0 ? id : null,
+        title,
+        dateLabel,
+        description,
+        startAt: startAt.length === 10 ? `${startAt} 00:00:00` : startAt.replace('T', ' ') + ':00',
+        endAt: endAt.length === 10 ? `${endAt} 23:59:59` : endAt.replace('T', ' ') + ':00',
+        sortOrder,
+        prizeSlot,
+        winnerUserId,
+        popupEnabled,
+        popupTitle
+      });
+    }
+
+    const deletedIds = [];
+    await db.tx(async (t) => {
+      await seedScheduleItems(t);
+      const currentRows = await t.query('SELECT id FROM schedule_items');
+      const existingIds = new Set(currentRows.map((row) => row.id));
+      const incomingIds = new Set(normalized.map((row) => row.id).filter(Boolean));
+
+      for (const row of normalized) {
+        if (row.id && existingIds.has(row.id)) {
+          await t.run(`
+            UPDATE schedule_items
+            SET title = ?, date_label = ?, description = ?, start_at = ?, end_at = ?, sort_order = ?,
+                prize_slot = ?, winner_user_id = ?, popup_enabled = ?, popup_title = ?
+            WHERE id = ?
+          `, [
+            row.title,
+            row.dateLabel,
+            row.description,
+            row.startAt,
+            row.endAt,
+            row.sortOrder,
+            row.prizeSlot,
+            row.winnerUserId,
+            row.popupEnabled ? 1 : 0,
+            row.popupTitle,
+            row.id
+          ]);
+        } else {
+          const result = await t.run(`
+            INSERT INTO schedule_items (
+              title, date_label, description, start_at, end_at, sort_order, prize_slot,
+              winner_user_id, popup_enabled, popup_title
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `, [
+            row.title,
+            row.dateLabel,
+            row.description,
+            row.startAt,
+            row.endAt,
+            row.sortOrder,
+            row.prizeSlot,
+            row.winnerUserId,
+            row.popupEnabled ? 1 : 0,
+            row.popupTitle
+          ]);
+          row.id = result?.lastID || result?.insertId || row.id;
+        }
+      }
+
+      for (const currentId of existingIds) {
+        if (!incomingIds.has(currentId)) {
+          await t.run('DELETE FROM schedule_items WHERE id = ?', [currentId]);
+          deletedIds.push(currentId);
+        }
+      }
+    });
+
+    await Promise.all(deletedIds.map((id) => removeScheduleAssets(id)));
+    const updatedRows = await fetchScheduleItems();
+    res.json({ ok: true, items: updatedRows });
+  } catch (e) {
+    console.error('admin/schedule-items/structure:', e);
+    res.status(500).json({ error: 'שמירת מבנה הלוז נכשלה' });
   }
 });
 
@@ -1107,14 +1282,26 @@ router.post('/send-emails', upload.array('attachments', 6), async (req, res) => 
       'smtp_user',
       'smtp_password',
       'site_url',
-      'smtp_manager_email'
+      'smtp_manager_email',
+      'email_user_delivery_mode',
+      'gmail_from_email',
+      'gmail_client_id',
+      'gmail_client_secret',
+      'gmail_refresh_token',
+      'gmail_access_token'
     ]);
+    const userDeliveryMode = resolveUserDeliveryMode(smtpSettings);
+    assertSmtpSettings(smtpSettings);
+    if (userDeliveryMode === 'gmail') assertGmailSettings(smtpSettings);
 
-    if (!smtpSettings.smtp_server || !smtpSettings.smtp_user || !smtpSettings.smtp_password) {
-      return res.status(400).json({ error: 'יש להגדיר תחילה פרטי SMTP בלשונית ההגדרות' });
-    }
-
-    const transporter = nodemailer.createTransport(buildTransportConfig(smtpSettings));
+    const reportTransporter = nodemailer.createTransport(buildTransportConfig(smtpSettings));
+    const userTransporter = userDeliveryMode === 'gmail'
+      ? nodemailer.createTransport(buildGmailTransportConfig(smtpSettings))
+      : reportTransporter;
+    const userSenderEmail = userDeliveryMode === 'gmail'
+      ? String(smtpSettings.gmail_from_email || '').trim()
+      : String(smtpSettings.smtp_user || '').trim();
+    const reportSenderEmail = String(smtpSettings.smtp_user || '').trim();
 
     const filters = ['is_admin = 0'];
     const params = [];
@@ -1147,8 +1334,50 @@ router.post('/send-emails', upload.array('attachments', 6), async (req, res) => 
       content: file.buffer,
       contentType: file.mimetype || undefined
     }));
+    const attachmentMeta = (req.files || []).map((file) => ({
+      filename: file.originalname || 'attachment',
+      size: file.size || file.buffer?.length || 0,
+      mimeType: file.mimetype || ''
+    }));
+
+    const campaign = await db.run(`
+      INSERT INTO email_campaigns (
+        created_by_user_id, subject, body, include_login_details, department_filter,
+        recipient_count, attachments_json, user_delivery_mode, sender_email, manager_email
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      req.user?.id || null,
+      subject,
+      body,
+      includeLoginDetails ? 1 : 0,
+      department || null,
+      recipients.length,
+      JSON.stringify(attachmentMeta),
+      userDeliveryMode,
+      userSenderEmail || null,
+      String(smtpSettings.smtp_manager_email || '').trim() || null
+    ]);
+    const campaignId = campaign?.insertId || campaign?.lastID;
+
+    for (const recipient of recipients) {
+      await db.run(`
+        INSERT INTO email_campaign_recipients (
+          campaign_id, user_id, recipient_name, recipient_email, recipient_phone, recipient_department, status
+        )
+        VALUES (?, ?, ?, ?, ?, ?, 'pending')
+      `, [
+        campaignId,
+        recipient.id || null,
+        recipient.name || null,
+        recipient.email,
+        recipient.phone_number || null,
+        recipient.department || null
+      ]);
+    }
 
     const sent = [];
+    const failed = [];
     for (const recipient of recipients) {
       const extraLines = [];
       const siteUrl = String(smtpSettings.site_url || '').trim();
@@ -1158,35 +1387,92 @@ router.post('/send-emails', upload.array('attachments', 6), async (req, res) => 
         extraLines.push(`סיסמה: ${recipient.phone_number || 'לא מוגדר מספר טלפון למשתמש זה'}`);
       }
 
-      await transporter.sendMail({
-        from: String(smtpSettings.smtp_user).trim(),
-        to: recipient.email,
-        subject,
-        text: [body, ...extraLines].join('\n\n'),
-        html: buildEmailHtml(body, extraLines),
-        attachments
-      });
-      sent.push(recipient.email);
+      try {
+        await userTransporter.sendMail({
+          from: userSenderEmail,
+          to: recipient.email,
+          subject,
+          text: [body, ...extraLines].join('\n\n'),
+          html: buildEmailHtml(body, extraLines),
+          attachments
+        });
+        sent.push(recipient.email);
+        await db.run(`
+          UPDATE email_campaign_recipients
+          SET status = 'sent', sent_at = CURRENT_TIMESTAMP, error_message = NULL
+          WHERE campaign_id = ? AND recipient_email = ?
+        `, [campaignId, recipient.email]);
+      } catch (error) {
+        failed.push({ email: recipient.email, error: error.message });
+        await db.run(`
+          UPDATE email_campaign_recipients
+          SET status = 'failed', error_message = ?
+          WHERE campaign_id = ? AND recipient_email = ?
+        `, [String(error.message || 'send failed').slice(0, 4000), campaignId, recipient.email]);
+      }
     }
 
     const managerEmail = String(smtpSettings.smtp_manager_email || '').trim();
+    let managerReportSent = false;
     if (managerEmail) {
       const summaryLines = [
         `כותרת: ${subject}`,
         `נשלח ל-${sent.length} משתמשים`,
         `נמענים: ${sent.join(', ') || 'אין'}`,
-        includeLoginDetails ? 'נכללו פרטי התחברות: כן' : 'נכללו פרטי התחברות: לא'
+        includeLoginDetails ? 'נכללו פרטי התחברות: כן' : 'נכללו פרטי התחברות: לא',
+        `ספק שליחה למשתמשים: ${userDeliveryMode === 'gmail' ? 'Gmail' : 'SMTP'}`
       ];
-      await transporter.sendMail({
-        from: String(smtpSettings.smtp_user).trim(),
+      if (failed.length) {
+        summaryLines.push(`נכשלו: ${failed.length}`);
+        summaryLines.push(`שגיאות: ${failed.map((item) => `${item.email} (${item.error})`).join(', ')}`);
+      }
+      await reportTransporter.sendMail({
+        from: reportSenderEmail,
         to: managerEmail,
         subject: `דוח שליחה: ${subject}`,
         text: `${summaryLines.join('\n')}\n\nתוכן ההודעה:\n${body}`,
         html: buildEmailHtml(body, summaryLines)
       });
+      managerReportSent = true;
     }
 
-    res.json({ ok: true, sent: sent.length, recipients: sent });
+    await db.run(
+      'UPDATE email_campaigns SET recipient_count = ?, manager_report_sent = ? WHERE id = ?',
+      [sent.length, managerReportSent ? 1 : 0, campaignId]
+    );
+    await appendEmailSendLog({
+      created_at: new Date().toISOString(),
+      campaign_id: campaignId,
+      created_by_user_id: req.user?.id || null,
+      subject,
+      body,
+      include_login_details: includeLoginDetails,
+      department_filter: department || null,
+      user_delivery_mode: userDeliveryMode,
+      sender_email: userSenderEmail,
+      manager_email: managerEmail || null,
+      sent_count: sent.length,
+      failed_count: failed.length,
+      recipients: recipients.map((recipient) => ({
+        id: recipient.id,
+        name: recipient.name,
+        email: recipient.email,
+        phone_number: recipient.phone_number || null,
+        department: recipient.department || null,
+        status: sent.includes(recipient.email) ? 'sent' : 'failed'
+      })),
+      attachments: attachmentMeta
+    });
+
+    res.json({
+      ok: true,
+      sent: sent.length,
+      failed: failed.length,
+      recipients: sent,
+      failed_recipients: failed,
+      campaign_id: campaignId,
+      delivery_mode: userDeliveryMode
+    });
   } catch (e) {
     console.error('admin/send-emails:', e);
     res.status(500).json({ error: `שליחת האימיילים נכשלה: ${e.message}` });

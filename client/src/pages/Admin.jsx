@@ -1104,6 +1104,16 @@ function SettingsTab() {
       <SettingsCard title="SMTP / שליחת אימיילים">
         <div className="admin-form-grid">
           <div className="field">
+            <label>ספק שליחה למשתמשים</label>
+            <select
+              value={draft.email_user_delivery_mode ?? 'smtp'}
+              onChange={e => upd('email_user_delivery_mode', e.target.value)}
+            >
+              <option value="smtp">SMTP של הספק</option>
+              <option value="gmail">Gmail OAuth</option>
+            </select>
+          </div>
+          <div className="field">
             <label>שרת SMTP</label>
             <input
               type="text"
@@ -1168,6 +1178,56 @@ function SettingsTab() {
               placeholder="https://mon2026.seach.co.il"
             />
           </div>
+        </div>
+        <div className="admin-form-grid" style={{ marginTop: 16 }}>
+          <div className="field">
+            <label>כתובת Gmail שולחת</label>
+            <input
+              type="email"
+              value={draft.gmail_from_email ?? ''}
+              onChange={e => upd('gmail_from_email', e.target.value)}
+              placeholder="example@gmail.com"
+            />
+          </div>
+          <div className="field">
+            <label>Gmail Client ID</label>
+            <input
+              type="text"
+              value={draft.gmail_client_id ?? ''}
+              onChange={e => upd('gmail_client_id', e.target.value)}
+              placeholder="Google OAuth Client ID"
+            />
+          </div>
+          <div className="field">
+            <label>Gmail Client Secret</label>
+            <input
+              type="text"
+              value={draft.gmail_client_secret ?? ''}
+              onChange={e => upd('gmail_client_secret', e.target.value)}
+              placeholder="Google OAuth Client Secret"
+            />
+          </div>
+          <div className="field">
+            <label>Gmail Refresh Token</label>
+            <input
+              type="text"
+              value={draft.gmail_refresh_token ?? ''}
+              onChange={e => upd('gmail_refresh_token', e.target.value)}
+              placeholder="Google OAuth Refresh Token"
+            />
+          </div>
+          <div className="field">
+            <label>Gmail Access Token</label>
+            <input
+              type="text"
+              value={draft.gmail_access_token ?? ''}
+              onChange={e => upd('gmail_access_token', e.target.value)}
+              placeholder="לא חובה"
+            />
+          </div>
+        </div>
+        <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 8 }}>
+          הודעות למשתתפים יכולות להישלח דרך Gmail OAuth, בעוד דוח המנהלת ימשיך לצאת דרך SMTP של הספק.
         </div>
       </SettingsCard>
 
@@ -1442,6 +1502,14 @@ function MessagesTab() {
       || String(user.department || '').toLowerCase().includes(q);
   });
 
+  const finalRecipients = users
+    .filter((user) => {
+      if (draft.department && user.department !== draft.department) return false;
+      if (selectedIds.length) return selectedIds.includes(user.id);
+      return !!draft.department;
+    })
+    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'he'));
+
   const toggleUser = (id) => {
     setSelectedIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   };
@@ -1485,7 +1553,10 @@ function MessagesTab() {
       Array.from(draft.attachments || []).forEach((file) => form.append('attachments', file));
 
       const { data } = await api.post('/admin/send-emails', form);
-      setOk(`נשלחו ${data.sent} אימיילים בהצלחה`);
+      const msg = data.failed
+        ? `נשלחו ${data.sent} אימיילים, ${data.failed} נכשלו. קמפיין #${data.campaign_id}`
+        : `נשלחו ${data.sent} אימיילים בהצלחה. קמפיין #${data.campaign_id}`;
+      setOk(msg);
       setDraft({
         subject: '',
         body: '',
@@ -1508,6 +1579,42 @@ function MessagesTab() {
       {ok && <div className="alert alert-success">{ok}</div>}
 
       <SettingsCard title="הודעת אימייל">
+        <div className="field" style={{ marginBottom: 16 }}>
+          <label>To:</label>
+          <div style={{
+            minHeight: 52,
+            border: '1px solid var(--line)',
+            borderRadius: 6,
+            padding: 10,
+            background: 'rgba(255,255,255,0.65)',
+            display: 'flex',
+            gap: 8,
+            flexWrap: 'wrap',
+            alignItems: 'center'
+          }}>
+            {finalRecipients.length > 0 ? finalRecipients.map((user) => (
+              <span key={user.id} style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 10px',
+                borderRadius: 999,
+                background: 'rgba(45,110,62,0.10)',
+                border: '1px solid rgba(45,110,62,0.18)',
+                fontSize: 13
+              }}>
+                <strong>{user.name}</strong>
+                <span style={{ color: 'var(--muted)' }}>{user.email}</span>
+              </span>
+            )) : (
+              <span style={{ color: 'var(--muted)', fontSize: 13 }}>טרם נבחרו נמענים</span>
+            )}
+          </div>
+          <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: 6 }}>
+            יוצגו כאן כל הנמענים שיקבלו בפועל את ההודעה לפי הבחירה הנוכחית.
+          </div>
+        </div>
+
         <div className="admin-form-grid">
           <div className="field">
             <label>כותרת</label>
@@ -1585,7 +1692,7 @@ function MessagesTab() {
         </div>
 
         <div style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 12 }}>
-          נבחרו {selectedIds.length} משתמשים
+          יישלח ל-{finalRecipients.length} משתמשים
         </div>
 
         <div style={{ display: 'grid', gap: 8, maxHeight: 420, overflow: 'auto' }}>
@@ -1794,6 +1901,24 @@ function ScheduleTab() {
   const [err, setErr] = useState('');
   const [ok, setOk] = useState('');
   const [savingId, setSavingId] = useState(null);
+  const [savingStructure, setSavingStructure] = useState(false);
+
+  const buildDraft = (item, index = 0) => ({
+    title: item.title || '',
+    date_label: item.date_label || '',
+    description: item.description || '',
+    start_at: String(item.start_at || '').slice(0, 10),
+    end_at: String(item.end_at || '').slice(0, 10),
+    sort_order: item.sort_order ?? (index + 1) * 10,
+    prize_slot: item.prize_slot ?? '',
+    winner_user_id: item.winner_user_id ?? '',
+    popup_enabled: !!item.popup_enabled,
+    popup_title: item.popup_title || '',
+    prize_image_file: null,
+    popup_image_file: null,
+    prize_image_url: item.prize_image_url || '',
+    popup_image_url: item.popup_image_url || ''
+  });
 
   const load = () => {
     setErr('');
@@ -1804,22 +1929,7 @@ function ScheduleTab() {
       const nextItems = itemsRes.data || [];
       setItems(nextItems);
       setUsers((usersRes.data || []).filter((u) => !u.is_admin));
-      setDrafts(Object.fromEntries(nextItems.map((item) => [item.id, {
-        title: item.title || '',
-        date_label: item.date_label || '',
-        description: item.description || '',
-        start_at: String(item.start_at || '').slice(0, 10),
-        end_at: String(item.end_at || '').slice(0, 10),
-        sort_order: item.sort_order ?? 0,
-        prize_slot: item.prize_slot ?? '',
-        winner_user_id: item.winner_user_id ?? '',
-        popup_enabled: !!item.popup_enabled,
-        popup_title: item.popup_title || '',
-        prize_image_file: null,
-        popup_image_file: null,
-        prize_image_url: item.prize_image_url || '',
-        popup_image_url: item.popup_image_url || ''
-      }])));
+      setDrafts(Object.fromEntries(nextItems.map((item, index) => [item.id, buildDraft(item, index)])));
     }).catch((e) => setErr(errMsg(e)));
   };
 
@@ -1832,9 +1942,115 @@ function ScheduleTab() {
     }));
   };
 
+  const renumberOrders = (nextItems) => {
+    setDrafts((prev) => {
+      const nextDrafts = { ...prev };
+      nextItems.forEach((item, index) => {
+        if (!nextDrafts[item.id]) nextDrafts[item.id] = buildDraft(item, index);
+        nextDrafts[item.id] = {
+          ...nextDrafts[item.id],
+          sort_order: (index + 1) * 10
+        };
+      });
+      return nextDrafts;
+    });
+  };
+
+  const addRow = () => {
+    const id = `new-${Date.now()}`;
+    const nextIndex = items.length;
+    const newItem = {
+      id,
+      title: '',
+      date_label: '',
+      description: '',
+      start_at: '',
+      end_at: '',
+      sort_order: (nextIndex + 1) * 10,
+      prize_slot: null,
+      winner_user_id: null,
+      popup_enabled: 0,
+      popup_title: '',
+      prize_image_url: '',
+      popup_image_url: ''
+    };
+    const nextItems = [...items, newItem];
+    setItems(nextItems);
+    setDrafts((prev) => ({ ...prev, [id]: buildDraft(newItem, nextIndex) }));
+    renumberOrders(nextItems);
+  };
+
+  const removeRow = (id) => {
+    const draft = drafts[id];
+    const label = draft?.title?.trim() || 'שורה חדשה';
+    if (!confirm(`למחוק את "${label}"?`)) return;
+    const nextItems = items.filter((item) => item.id !== id);
+    setItems(nextItems);
+    setDrafts((prev) => {
+      const nextDrafts = { ...prev };
+      delete nextDrafts[id];
+      return nextDrafts;
+    });
+    renumberOrders(nextItems);
+  };
+
+  const moveRow = (id, direction) => {
+    const index = items.findIndex((item) => item.id === id);
+    const target = index + direction;
+    if (index < 0 || target < 0 || target >= items.length) return;
+    const nextItems = [...items];
+    const [row] = nextItems.splice(index, 1);
+    nextItems.splice(target, 0, row);
+    setItems(nextItems);
+    renumberOrders(nextItems);
+  };
+
+  const saveStructure = async () => {
+    if (!items.length) {
+      setErr('יש להגדיר לפחות שורה אחת בלוז');
+      return;
+    }
+    setSavingStructure(true);
+    setErr('');
+    setOk('');
+    try {
+      const payload = {
+        items: items.map((item, index) => {
+          const draft = drafts[item.id] || buildDraft(item, index);
+          return {
+            id: typeof item.id === 'number' ? item.id : null,
+            title: draft.title,
+            date_label: draft.date_label,
+            description: draft.description,
+            start_at: draft.start_at,
+            end_at: draft.end_at,
+            sort_order: Number.parseInt(draft.sort_order, 10) || (index + 1) * 10,
+            prize_slot: draft.prize_slot === '' ? null : Number.parseInt(draft.prize_slot, 10),
+            winner_user_id: draft.winner_user_id === '' ? null : Number.parseInt(draft.winner_user_id, 10),
+            popup_enabled: !!draft.popup_enabled,
+            popup_title: draft.popup_title || ''
+          };
+        })
+      };
+      const { data } = await api.post('/admin/schedule-items/structure', payload);
+      const nextItems = data.items || [];
+      setItems(nextItems);
+      setDrafts(Object.fromEntries(nextItems.map((item, index) => [item.id, buildDraft(item, index)])));
+      setOk('מבנה הלוז נשמר בהצלחה ונשמר כברירת המחדל של האתר');
+    } catch (e) {
+      setErr(errMsg(e));
+    } finally {
+      setSavingStructure(false);
+    }
+  };
+
   const save = async (id) => {
     const draft = drafts[id];
     if (!draft) return;
+    if (typeof id !== 'number') {
+      setErr('יש לשמור קודם את מבנה הלוז כדי ליצור את השורה ב-DB, ורק אחר כך להעלות תמונות');
+      return;
+    }
     setSavingId(id);
     setErr('');
     setOk('');
@@ -1882,8 +2098,27 @@ function ScheduleTab() {
       {err && <div className="alert alert-error">{err}</div>}
       {ok && <div className="alert alert-success">{ok}</div>}
 
+      <div style={{
+        display: 'flex',
+        gap: 12,
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 18
+      }}>
+        <div style={{ color: 'var(--muted)', fontSize: 14 }}>
+          כאן אפשר להוסיף/להסיר שורות, לשנות את הסדר ולשמור את כל מבנה הלוז בבת אחת. לאחר מכן אפשר לשמור תמונות לכל שורה בנפרד.
+        </div>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <button className="btn btn-outline" onClick={addRow}>הוסף שורה</button>
+          <button className="btn btn-gold" onClick={saveStructure} disabled={savingStructure}>
+            {savingStructure ? 'שומר מבנה...' : 'שמור את כל מבנה הלוז'}
+          </button>
+        </div>
+      </div>
+
       <div style={{ display: 'grid', gap: 16 }}>
-        {items.map((item) => {
+        {items.map((item, index) => {
           const draft = drafts[item.id];
           if (!draft) return null;
           return (
@@ -1898,9 +2133,14 @@ function ScheduleTab() {
                   <h3 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: 24 }}>{draft.title}</h3>
                   <p style={{ margin: '6px 0 0', color: 'var(--muted)' }}>{draft.date_label}</p>
                 </div>
-                <button className="btn btn-gold" onClick={() => save(item.id)} disabled={savingId === item.id}>
-                  {savingId === item.id ? 'שומר...' : 'שמור שורה'}
-                </button>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button className="btn btn-outline" onClick={() => moveRow(item.id, -1)} disabled={index === 0}>למעלה</button>
+                  <button className="btn btn-outline" onClick={() => moveRow(item.id, 1)} disabled={index === items.length - 1}>למטה</button>
+                  <button className="btn btn-outline" onClick={() => removeRow(item.id)}>מחק שורה</button>
+                  <button className="btn btn-gold" onClick={() => save(item.id)} disabled={savingId === item.id}>
+                    {savingId === item.id ? 'שומר...' : 'שמור שורה / תמונות'}
+                  </button>
+                </div>
               </div>
 
               <div className="admin-form-grid">
