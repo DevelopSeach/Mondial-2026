@@ -7,6 +7,7 @@ import api, { errMsg } from '../api/client';
 import Flag from '../components/Flag';
 import { useTranslation } from '../i18n/TranslationContext';
 import { useAuth } from '../context/AuthContext';
+import { ilDate, ilDateTime } from '../utils/time';
 
 export default function Admin() {
   const [tab, setTab] = useState('overview');
@@ -458,7 +459,7 @@ function UsersTab() {
                 <td style={{ fontSize: 13 }}>{u.department || '—'}</td>
                 <td>{u.num_predictions}</td>
                 <td style={{ fontSize: 12, color: 'var(--muted)' }}>
-                  {new Date(u.created_at).toLocaleDateString('he-IL')}
+                  {ilDate(u.created_at, 'he-IL')}
                 </td>
                 <td>
                   {(u.role === 'admin' || u.is_admin)
@@ -925,7 +926,7 @@ function MatchesTab() {
                     </div>
                   </td>
                   <td style={{ fontSize: 12, color: 'var(--muted)' }}>
-                    {new Date(m.kickoff).toLocaleString('he-IL', {
+                    {ilDateTime(m.kickoff, 'he-IL', {
                       day: '2-digit', month: '2-digit',
                       hour: '2-digit', minute: '2-digit'
                     })}
@@ -1365,7 +1366,7 @@ function ContactTab() {
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                 <strong>{item.name}</strong>
                 <span style={{ color: 'var(--muted)', fontSize: 13 }}>
-                  {new Date(item.created_at).toLocaleString('he-IL')}
+                  {ilDateTime(item.created_at, 'he-IL')}
                 </span>
               </div>
               <div style={{ color: 'var(--muted)', fontSize: 14, marginTop: 6 }}>

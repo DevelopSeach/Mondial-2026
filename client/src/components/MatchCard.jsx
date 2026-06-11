@@ -1,12 +1,13 @@
 import Flag from './Flag';
 import { useTranslation } from '../i18n/TranslationContext';
+import { ilDate, ilTime } from '../utils/time';
 
-// תרגום שעה לפורמט נוח לישראלי
+// שעה/תאריך לפי שעון ישראל
 function formatDateTime(iso, locale) {
-  const d = new Date(iso);
-  const date = d.toLocaleDateString(locale, { day: '2-digit', month: '2-digit' });
-  const time = d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
-  return { date, time };
+  return {
+    date: ilDate(iso, locale, { day: '2-digit', month: '2-digit' }),
+    time: ilTime(iso, locale, { hour: '2-digit', minute: '2-digit' })
+  };
 }
 
 export default function MatchCard({ match, children }) {

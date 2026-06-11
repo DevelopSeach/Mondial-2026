@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import api from '../api/client';
 import MatchCard from '../components/MatchCard';
 import { useTranslation } from '../i18n/TranslationContext';
+import { ilDate, ilDayKey } from '../utils/time';
 
 export default function Matches() {
   const { t, locale } = useTranslation();
@@ -33,7 +34,7 @@ export default function Matches() {
     });
     const byDay = {};
     for (const m of list) {
-      const day = m.kickoff.slice(0, 10);
+      const day = ilDayKey(m.kickoff);
       if (!byDay[day]) byDay[day] = [];
       byDay[day].push(m);
     }
@@ -61,7 +62,7 @@ export default function Matches() {
       {groups.map(([day, dayMatches]) => (
         <div key={day}>
           <div className="day-label">
-            {new Date(day).toLocaleDateString(locale, { weekday:'long', day:'2-digit', month:'long', year:'numeric' })}
+            {ilDate(dayMatches[0].kickoff, locale, { weekday:'long', day:'2-digit', month:'long', year:'numeric' })}
           </div>
           <div style={{display: 'grid', gap: 12}}>
             {dayMatches.map(m => {

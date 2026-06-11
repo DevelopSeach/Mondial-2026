@@ -4,12 +4,12 @@ import api, { errMsg } from '../api/client';
 import Flag from '../components/Flag';
 import { useTranslation } from '../i18n/TranslationContext';
 import { useAuth } from '../context/AuthContext';
+import { ilDate, ilTime, ilMs, ilDayKey } from '../utils/time';
 
 function formatDateTime(iso, locale) {
-  const d = new Date(iso);
   return {
-    date: d.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', weekday: 'short' }),
-    time: d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
+    date: ilDate(iso, locale, { day: '2-digit', month: '2-digit', weekday: 'short' }),
+    time: ilTime(iso, locale, { hour: '2-digit', minute: '2-digit' })
   };
 }
 
@@ -78,7 +78,7 @@ export default function Predictions() {
       const specialLockRow = (scheduleRes.data || []).find((item) => item.title === 'סגירת ניחושים מיוחדים');
       if (specialLockRow?.start_at) {
         const raw = String(specialLockRow.start_at);
-        const lockAt = new Date(raw.includes('T') ? raw : `${raw.replace(' ', 'T')}Z`).getTime();
+        const lockAt = ilMs(raw);
         setSpecialLocked(Date.now() >= lockAt);
         setSpecialLockLabel(specialLockRow.date_label || '');
       }
@@ -127,7 +127,7 @@ export default function Predictions() {
       let filled = 0;
       for (const m of matches) {
         if (m.status === 'finished') continue;
-        const lockTime = new Date(m.kickoff).getTime() - lockHours * 3600 * 1000;
+        const lockTime = ilMs(m.kickoff) - lockHours * 3600 * 1000;
         if (Date.now() >= lockTime) continue;
         const cur = next[m.id] || {};
         const hasHome = Number.isInteger(cur.home);
@@ -286,7 +286,7 @@ export default function Predictions() {
     const groups = {};
     const list = matches.filter(m => m.stage === 'group' || tab === 'all');
     for (const m of list) {
-      const day = m.kickoff.slice(0, 10);
+      const day = ilDayKey(m.kickoff);
       if (!groups[day]) groups[day] = [];
       groups[day].push(m);
     }
@@ -365,11 +365,11 @@ export default function Predictions() {
           {byDay.map(([day, dayMatches]) => (
             <div key={day}>
               <div className="day-label">
-                {new Date(day).toLocaleDateString(locale, { weekday:'long', day:'2-digit', month:'long' })}
+                {ilDate(dayMatches[0].kickoff, locale, { weekday:'long', day:'2-digit', month:'long' })}
               </div>
               {dayMatches.map(m => {
                 const p = predictions[m.id] || {};
-                const kickoff = new Date(m.kickoff).getTime();
+                const kickoff = ilMs(m.kickoff);
                 const lockTime = kickoff - lockHours * 3600 * 1000;
                 const locked = Date.now() >= lockTime;
                 const finished = m.status === 'finished';

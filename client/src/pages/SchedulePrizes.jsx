@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import api from '../api/client';
 import { useTranslation } from '../i18n/TranslationContext';
 import ScoringSummary from '../components/ScoringSummary';
+import { ilDate, ilMs } from '../utils/time';
 
 function formatDate(dateStr, locale) {
-  return new Date(dateStr).toLocaleDateString(locale, {
+  return ilDate(dateStr, locale, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric'
@@ -21,7 +22,7 @@ export default function SchedulePrizes() {
   }, []);
 
   const now = Date.now();
-  const nextItem = items.find((item) => new Date(item.end_at).getTime() >= now) || null;
+  const nextItem = items.find((item) => ilMs(item.end_at) >= now) || null;
   const specialLockItem = items.find((item) => item.title === 'סגירת ניחושים מיוחדים') || null;
   const prizeItems = items
     .filter((item) => Number.isInteger(Number(item.prize_slot)) && Number(item.prize_slot) > 0)
@@ -48,7 +49,7 @@ export default function SchedulePrizes() {
             </thead>
             <tbody>
               {items.map((item) => {
-                const passed = new Date(item.end_at).getTime() < now;
+                const passed = ilMs(item.end_at) < now;
                 return (
                   <tr key={item.id} className={passed ? 'passed' : ''}>
                     <td>{item.title}</td>
