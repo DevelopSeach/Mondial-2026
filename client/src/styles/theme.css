@@ -1490,8 +1490,17 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
     flex-direction: row !important;
     text-align: center !important;
   }
-  .prediction-row { grid-template-columns: 1fr; gap: 6px; text-align: center; }
-  .scores-block { justify-content: center; }
+  /* בנייד: שומרים את הניחוש אופקי כך שהדגלים נשארים ליד תיבות הניחוש (ולא מעל/מתחת) */
+  .prediction-row {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 6px;
+    padding: 12px 8px;
+    align-items: center;
+  }
+  .prediction-row .match-team { gap: 6px; }
+  .prediction-row .match-team .name { max-width: 60px; font-size: 12px; }
+  .prediction-row .scores-block { justify-content: center; }
+  .prediction-row .score-input { width: 40px; }
   .login-hero h1 { font-size: 56px; }
   .login-form-area { padding: 30px 20px; }
   .login-form h2 { font-size: 40px; }
