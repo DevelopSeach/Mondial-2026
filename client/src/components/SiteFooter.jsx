@@ -16,12 +16,12 @@ export default function SiteFooter() {
   const [contactOk, setContactOk] = useState('');
   const [sending, setSending] = useState(false);
 
-  useEffect(() => {
+  const loadDocs = (withConsent) => {
     api.get('/site/footer-docs')
       .then((r) => {
         const nextDocs = r.data || [];
         setDocs(nextDocs);
-        if (!localStorage.getItem('mondial_terms_accepted')) {
+        if (withConsent && !localStorage.getItem('mondial_terms_accepted')) {
           const termsDoc = nextDocs.find((item) => item.doc_key === 'rules') || nextDocs[0];
           if (termsDoc) {
             setDoc(termsDoc);
@@ -30,6 +30,14 @@ export default function SiteFooter() {
         }
       })
       .catch(() => setDocs([]));
+  };
+
+  useEffect(() => {
+    loadDocs(true);
+    // רענון מיידי כשמנהל מעדכן מסמך פוטר (כדי שהקישור יפתח את הקובץ החדש בלי רענון דף)
+    const onUpdated = () => loadDocs(false);
+    window.addEventListener('footer-docs-updated', onUpdated);
+    return () => window.removeEventListener('footer-docs-updated', onUpdated);
   }, []);
 
   useEffect(() => {

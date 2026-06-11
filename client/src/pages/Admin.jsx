@@ -1023,6 +1023,8 @@ function SettingsTab() {
         }
       }));
       setOk(`מסמך "${nextDoc.label}" נשמר`);
+      // רענון מיידי של הפוטר הגלובלי כדי שהקישור יפתח את הקובץ החדש
+      window.dispatchEvent(new Event('footer-docs-updated'));
     } catch (e) {
       setErr(errMsg(e));
     } finally {
