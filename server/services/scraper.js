@@ -5,7 +5,6 @@
 //   3. api-football - דרך api-football.com (דורש מפתח חינמי)
 
 const axios = require('axios');
-const cheerio = require('cheerio');
 const db = require('../db');
 const { recalcForMatch } = require('./scoring');
 
@@ -57,32 +56,49 @@ async function getModeFromSettings() {
 }
 
 // ─────────── ESPN ───────────
+// ESPN's fixtures HTML is now rendered client-side (the React/"Fitt" framework),
+// so the old cheerio <tr> parser found nothing. We use ESPN's public JSON
+// scoreboard API instead, which returns clean structured fixtures + scores.
+const ESPN_SCOREBOARD =
+  'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard';
+
 async function scrapeFromESPN() {
-  const url = 'https://www.espn.com/soccer/fixtures/_/league/fifa.world';
+  // Query the full tournament window so a single run can settle any finished game.
+  const url = `${ESPN_SCOREBOARD}?dates=20260611-20260719`;
   const updated = [];
   const { data } = await axios.get(url, {
     headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Mondial2026Bot/1.0)' },
     timeout: 20000
   });
-  const $ = cheerio.load(data);
-  const rows = $('tr').toArray();
-  for (const row of rows) {
-    const text = $(row).text();
-    const m = text.match(/([A-Za-z .'-]+?)\s+(\d+)\s*[-–]\s*(\d+)\s+([A-Za-z .'-]+)/);
-    if (!m) continue;
-    const home = teamCode(m[1]);
-    const away = teamCode(m[4]);
+  const events = (data && data.events) || [];
+  for (const ev of events) {
+    const comp = ev.competitions && ev.competitions[0];
+    if (!comp || !Array.isArray(comp.competitors)) continue;
+    const home = comp.competitors.find((c) => c.homeAway === 'home');
+    const away = comp.competitors.find((c) => c.homeAway === 'away');
     if (!home || !away) continue;
-    const hs = parseInt(m[2], 10);
-    const as = parseInt(m[3], 10);
+
+    const homeCode = teamCode(home.team && home.team.displayName);
+    const awayCode = teamCode(away.team && away.team.displayName);
+    if (!homeCode || !awayCode) continue;
+
+    const hs = parseInt(home.score, 10);
+    const as = parseInt(away.score, 10);
+    if (!Number.isInteger(hs) || !Number.isInteger(as)) continue;
+
+    // state: 'pre' (not started) | 'in' (live) | 'post' (final)
+    const state = comp.status && comp.status.type && comp.status.type.state;
+    if (state === 'pre') continue;
+    const status = state === 'post' ? 'finished' : 'live';
+
     const match = await db.one(`
       SELECT id FROM matches
       WHERE home_code = ? AND away_code = ? AND status != 'finished'
       ORDER BY kickoff ASC LIMIT 1
-    `, [home, away]);
+    `, [homeCode, awayCode]);
     if (match) {
-      if (await updateMatchScore(match.id, hs, as, 'finished')) {
-        updated.push({ id: match.id, score: `${home} ${hs}-${as} ${away}` });
+      if (await updateMatchScore(match.id, hs, as, status)) {
+        updated.push({ id: match.id, score: `${homeCode} ${hs}-${as} ${awayCode}`, status });
       }
     }
   }
