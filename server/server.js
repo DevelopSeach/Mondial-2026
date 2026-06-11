@@ -8,6 +8,7 @@ const fs = require('fs');
 
 const db = require('./db');
 const { runDailyUpdate } = require('./services/scraper');
+const { sendLeaderboardReport } = require('./services/leaderboard-report');
 const { activeThemeAssetsDir, themeDir, DEFAULT_THEME, activeThemeName } = require('./lib/themes');
 
 const app = express();
@@ -75,6 +76,14 @@ cron.schedule('0 */2 * * *', () => {
     runDailyUpdate().catch(e => console.error(e));
   }
 });
+
+// דוח יומי: צילום טבלת המצטיינים ושליחתו למנהלת שליחות (08:00 שעון ישראל)
+cron.schedule('0 8 * * *', () => {
+  console.log('⏰ שליחת דוח יומי של טבלת המצטיינים...');
+  sendLeaderboardReport()
+    .then((r) => console.log(`   ✓ נשלח ל-${r.to} (${r.count} משתתפים)`))
+    .catch((e) => console.error('   ✗ שליחת דוח מצטיינים נכשלה:', e.message));
+}, { timezone: 'Asia/Jerusalem' });
 
 const PORT = process.env.PORT || 4026;
 

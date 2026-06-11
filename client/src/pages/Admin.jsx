@@ -1707,6 +1707,19 @@ function MessagesTab() {
   const [ok, setOk] = useState('');
   const [busy, setBusy] = useState(false);
   const [search, setSearch] = useState('');
+  const [reportBusy, setReportBusy] = useState(false);
+
+  const sendLeaderboardReport = async () => {
+    setReportBusy(true); setErr(''); setOk('');
+    try {
+      const { data } = await api.post('/admin/leaderboard-report/send');
+      setOk(`דוח טבלת המצטיינים נשלח אל ${data.to} (${data.count} משתתפים)`);
+    } catch (e) {
+      setErr(errMsg(e));
+    } finally {
+      setReportBusy(false);
+    }
+  };
 
   useEffect(() => {
     Promise.all([
@@ -1805,6 +1818,16 @@ function MessagesTab() {
     <div style={{ maxWidth: 1120 }}>
       {err && <div className="alert alert-error">{err}</div>}
       {ok && <div className="alert alert-success">{ok}</div>}
+
+      <SettingsCard title="דוח יומי — טבלת המצטיינים">
+        <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 0 }}>
+          מדי יום ב-08:00 (שעון ישראל) נשלחת אוטומטית תמונת טבלת המצטיינים אל "מנהלת שליחות"
+          (כתובת המנהל/ת בהגדרות SMTP). ניתן לשלוח דוגמה עכשיו:
+        </p>
+        <button className="btn btn-sm btn-gold" onClick={sendLeaderboardReport} disabled={reportBusy}>
+          {reportBusy ? 'שולח...' : 'שלח דוח לדוגמה עכשיו'}
+        </button>
+      </SettingsCard>
 
       <SettingsCard title="הודעת אימייל">
         <div className="field" style={{ marginBottom: 16 }}>

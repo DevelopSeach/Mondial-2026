@@ -12,7 +12,8 @@ const XLSX = require('xlsx');
 const db = require('../db');
 const { auth } = require('../middleware/auth');
 const { updateMatchScore, runDailyUpdate } = require('../services/scraper');
-const { recalcForMatch, loadBadgeConfig, DEFAULT_BADGE_CONFIG } = require('../services/scoring');
+const { recalcForMatch, loadBadgeConfig, DEFAULT_BADGE_CONFIG, leaderboard } = require('../services/scoring');
+const { sendLeaderboardReport } = require('../services/leaderboard-report');
 const { seedScheduleItems } = require('../lib/schedule-items');
 const { seedFooterDocuments } = require('../lib/footer-content');
 const {
@@ -926,7 +927,7 @@ router.get('/users/export-missing', async (req, res) => {
       const maxFilled = 0.6 * ids.length;
       // משתמשים אמיתיים (לא מנהל/אורח) שחסרים להם לפחות 40% מהניחושים במשחקים הקרובים
       const rows = await db.query(`
-        SELECT u.name, u.phone_number,
+        SELECT u.id, u.name, u.phone_number,
           (SELECT COUNT(*) FROM predictions p
              WHERE p.user_id = u.id AND p.match_id IN (${placeholders})) AS filled
         FROM users u
@@ -934,14 +935,22 @@ router.get('/users/export-missing', async (req, res) => {
         HAVING filled <= ?
         ORDER BY u.name ASC
       `, [...ids, maxFilled]);
-      data = rows.map((r) => ({
-        'שם': r.name || '',
-        'טלפון': r.phone_number || '',
-        'ניחושים שמולאו': `${r.filled}/${ids.length}`
-      }));
+      // נקודות ומיקום נוכחי לכל משתמש מתוך טבלת הדירוג
+      const board = await leaderboard();
+      const byId = new Map(board.map((b) => [b.id, b]));
+      data = rows.map((r) => {
+        const lb = byId.get(r.id);
+        return {
+          'שם': r.name || '',
+          'טלפון': r.phone_number || '',
+          'מספר נקודות': lb ? lb.total_points : 0,
+          'מיקום נוכחי': lb ? lb.rank : '',
+          'ניחושים שמולאו': `${r.filled}/${ids.length}`
+        };
+      });
     }
 
-    const headers = ['שם', 'טלפון', 'ניחושים שמולאו'];
+    const headers = ['שם', 'טלפון', 'מספר נקודות', 'מיקום נוכחי', 'ניחושים שמולאו'];
     const ws = data.length
       ? XLSX.utils.json_to_sheet(data, { header: headers })
       : XLSX.utils.aoa_to_sheet([headers]);
@@ -1025,6 +1034,17 @@ router.get('/users/export-by-activity', async (req, res) => {
   } catch (e) {
     console.error('admin/users/export-by-activity:', e);
     res.status(500).json({ error: 'שגיאת שרת' });
+  }
+});
+
+// שליחה ידנית (מיידית) של דוח טבלת המצטיינים למנהלת שליחות — לבדיקה/דוגמה
+router.post('/leaderboard-report/send', async (req, res) => {
+  try {
+    const result = await sendLeaderboardReport();
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    console.error('admin/leaderboard-report/send:', e);
+    res.status(500).json({ error: e.message || 'שגיאת שרת' });
   }
 });
 
