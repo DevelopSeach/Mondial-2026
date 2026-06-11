@@ -950,6 +950,27 @@ function rowsToXlsxBuffer(data, headers, sheetName) {
   return XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' });
 }
 
+// כותב קובץ XLSX לתיקייה ציבורית (כתובת עם טוקן, ללא צורך בהתחברות) ומחזיר URL מלא.
+// משמש לכפתורי "שלח ב-WhatsApp" בכל תיבת ייצוא (TmpSender מוריד את הקובץ צד-שרת).
+async function publishXlsxToPublicUrl(req, buf, prefix) {
+  const dir = path.join(__dirname, '..', '..', 'data', 'wa_exports');
+  await fs.promises.mkdir(dir, { recursive: true });
+  // ניקוי קבצים ישנים (מעל שעתיים) כדי לא לצבור קבצים זמניים
+  try {
+    const now = Date.now();
+    for (const f of await fs.promises.readdir(dir)) {
+      const st = await fs.promises.stat(path.join(dir, f)).catch(() => null);
+      if (st && now - st.mtimeMs > 2 * 3600 * 1000) await fs.promises.rm(path.join(dir, f), { force: true }).catch(() => {});
+    }
+  } catch {}
+  const name = `${prefix}-${randomPassword(24)}.xlsx`;
+  await fs.promises.writeFile(path.join(dir, name), buf);
+  const settings = await readSettingsMap(['site_url']);
+  let base = String(settings.site_url || '').trim().replace(/\/+$/, '');
+  if (!/^https?:\/\//i.test(base)) base = `${req.protocol}://${req.get('host')}`;
+  return `${base}/data/wa_exports/${name}`;
+}
+
 // ייצוא XLS של משתמשים (שם, טלפון) שחסרים להם לפחות 40% מהניחושים ל-N המשחקים הקרובים
 // ?games=5 (ברירת מחדל) ?format=xlsx|csv.
 router.get('/users/export-missing', async (req, res) => {
@@ -994,24 +1015,7 @@ router.post('/users/export-missing-link', async (req, res) => {
     }
 
     const buf = rowsToXlsxBuffer(data, MISSING_HEADERS, 'MissingGuesses');
-    const dir = path.join(__dirname, '..', '..', 'data', 'wa_exports');
-    await fs.promises.mkdir(dir, { recursive: true });
-    // ניקוי קבצים ישנים (מעל שעתיים) כדי לא לצבור קבצים זמניים
-    try {
-      const now = Date.now();
-      for (const f of await fs.promises.readdir(dir)) {
-        const st = await fs.promises.stat(path.join(dir, f)).catch(() => null);
-        if (st && now - st.mtimeMs > 2 * 3600 * 1000) await fs.promises.rm(path.join(dir, f), { force: true }).catch(() => {});
-      }
-    } catch {}
-    const name = `missing-${randomPassword(24)}.xlsx`;
-    await fs.promises.writeFile(path.join(dir, name), buf);
-
-    const settings = await readSettingsMap(['site_url']);
-    let base = String(settings.site_url || '').trim().replace(/\/+$/, '');
-    if (!/^https?:\/\//i.test(base)) base = `${req.protocol}://${req.get('host')}`;
-    const url = `${base}/data/wa_exports/${name}`;
-
+    const url = await publishXlsxToPublicUrl(req, buf, 'missing');
     res.json({ ok: true, url, count: data.length });
   } catch (e) {
     console.error('admin/users/export-missing-link:', e);
@@ -1019,74 +1023,69 @@ router.post('/users/export-missing-link', async (req, res) => {
   }
 });
 
-// ייצוא XLS של משתמשים (שם, טלפון, מחלקה) לפי מחלקה ולפי כמות הניחושים שהוזנו
-// ?department=<שם מחלקה|all> &min=X (יותר מ-) &max=Y (פחות מ-) &format=xlsx|csv
+const ACTIVITY_HEADERS = ['שם', 'טלפון', 'מחלקה', 'מספר ניחושים', 'נכונים', '% נכונים', 'מספר נקודות', 'מיקום נוכחי'];
+
+// בונה את שורות הייצוא לפי מחלקה/כמות-ניחושים/אחוז-נכונים מתוך פרמטרי השאילתה
+async function buildActivityRows(q) {
+  const whereParts = ['u.is_admin = 0', 'u.is_guest = 0'];
+  const whereParams = [];
+  const dep = String(q.department || '').trim();
+  if (dep && dep.toLowerCase() !== 'all') { whereParts.push('u.department = ?'); whereParams.push(dep); }
+
+  // יותר מ-X / פחות מ-Y (אי-שוויון חמור); כל גבול אופציונלי
+  const havingParts = [];
+  const havingParams = [];
+  const min = parseInt(q.min, 10);
+  const max = parseInt(q.max, 10);
+  if (Number.isInteger(min)) { havingParts.push('cnt > ?'); havingParams.push(min); }
+  if (Number.isInteger(max)) { havingParts.push('cnt < ?'); havingParams.push(max); }
+
+  // יותר מ-X% ניחושים נכונים (נקודות>0) מבין המשחקים ששוחקו
+  const finishedRow = await db.one("SELECT COUNT(*) AS c FROM matches WHERE status = 'finished'");
+  const finishedTotal = Number(finishedRow?.c || 0);
+  const minPct = parseFloat(q.min_correct_pct);
+  if (Number.isFinite(minPct)) {
+    if (finishedTotal > 0) { havingParts.push('correct > ?'); havingParams.push((minPct / 100) * finishedTotal); }
+    else havingParts.push('1 = 0'); // אין משחקים ששוחקו — אף אחד לא עובר סף אחוזים
+  }
+
+  const rows = await db.query(`
+    SELECT u.id, u.name, u.phone_number, u.department,
+      (SELECT COUNT(*) FROM predictions p WHERE p.user_id = u.id) AS cnt,
+      (SELECT COUNT(*) FROM predictions p
+         JOIN matches m ON m.id = p.match_id
+         WHERE p.user_id = u.id AND m.status = 'finished' AND p.points > 0) AS correct
+    FROM users u
+    WHERE ${whereParts.join(' AND ')}
+    ${havingParts.length ? 'HAVING ' + havingParts.join(' AND ') : ''}
+    ORDER BY u.name ASC
+  `, [...whereParams, ...havingParams]);
+
+  const board = await leaderboard();
+  const byId = new Map(board.map((b) => [b.id, b]));
+  return rows.map((r) => {
+    const lb = byId.get(r.id);
+    return {
+      'שם': r.name || '',
+      'טלפון': r.phone_number || '',
+      'מחלקה': r.department || '',
+      'מספר ניחושים': r.cnt,
+      'נכונים': r.correct,
+      '% נכונים': finishedTotal > 0 ? Math.round((Number(r.correct) / finishedTotal) * 100) : 0,
+      'מספר נקודות': lb ? lb.total_points : 0,
+      'מיקום נוכחי': lb ? lb.rank : ''
+    };
+  });
+}
+
+// ייצוא XLS של משתמשים (שם, טלפון, מחלקה) לפי מחלקה/כמות-ניחושים/אחוז-נכונים. ?format=xlsx|csv
 router.get('/users/export-by-activity', async (req, res) => {
   try {
     const format = String(req.query.format || 'xlsx').toLowerCase();
-
-    const whereParts = ['u.is_admin = 0', 'u.is_guest = 0'];
-    const whereParams = [];
-    const dep = String(req.query.department || '').trim();
-    if (dep && dep.toLowerCase() !== 'all') {
-      whereParts.push('u.department = ?');
-      whereParams.push(dep);
-    }
-
-    // יותר מ-X / פחות מ-Y (אי-שוויון חמור); כל גבול אופציונלי
-    const havingParts = [];
-    const havingParams = [];
-    const min = parseInt(req.query.min, 10);
-    const max = parseInt(req.query.max, 10);
-    if (Number.isInteger(min)) { havingParts.push('cnt > ?'); havingParams.push(min); }
-    if (Number.isInteger(max)) { havingParts.push('cnt < ?'); havingParams.push(max); }
-
-    // יותר מ-X% ניחושים נכונים (נקודות>0) מבין המשחקים ששוחקו (status=finished)
-    const finishedRow = await db.one("SELECT COUNT(*) AS c FROM matches WHERE status = 'finished'");
-    const finishedTotal = Number(finishedRow?.c || 0);
-    const minPct = parseFloat(req.query.min_correct_pct);
-    if (Number.isFinite(minPct)) {
-      if (finishedTotal > 0) {
-        // correct > (X/100)*finishedTotal  ⇔  correct/finishedTotal*100 > X
-        havingParts.push('correct > ?');
-        havingParams.push((minPct / 100) * finishedTotal);
-      } else {
-        havingParts.push('1 = 0'); // אין משחקים ששוחקו — אף אחד לא יכול לעבור סף אחוזים
-      }
-    }
-
-    const rows = await db.query(`
-      SELECT u.id, u.name, u.phone_number, u.department,
-        (SELECT COUNT(*) FROM predictions p WHERE p.user_id = u.id) AS cnt,
-        (SELECT COUNT(*) FROM predictions p
-           JOIN matches m ON m.id = p.match_id
-           WHERE p.user_id = u.id AND m.status = 'finished' AND p.points > 0) AS correct
-      FROM users u
-      WHERE ${whereParts.join(' AND ')}
-      ${havingParts.length ? 'HAVING ' + havingParts.join(' AND ') : ''}
-      ORDER BY u.name ASC
-    `, [...whereParams, ...havingParams]);
-
-    // נקודות ומיקום נוכחי מתוך טבלת הדירוג
-    const board = await leaderboard();
-    const byId = new Map(board.map((b) => [b.id, b]));
-    const data = rows.map((r) => {
-      const lb = byId.get(r.id);
-      return {
-        'שם': r.name || '',
-        'טלפון': r.phone_number || '',
-        'מחלקה': r.department || '',
-        'מספר ניחושים': r.cnt,
-        'נכונים': r.correct,
-        '% נכונים': finishedTotal > 0 ? Math.round((Number(r.correct) / finishedTotal) * 100) : 0,
-        'מספר נקודות': lb ? lb.total_points : 0,
-        'מיקום נוכחי': lb ? lb.rank : ''
-      };
-    });
-    const headers = ['שם', 'טלפון', 'מחלקה', 'מספר ניחושים', 'נכונים', '% נכונים', 'מספר נקודות', 'מיקום נוכחי'];
+    const data = await buildActivityRows(req.query);
     const ws = data.length
-      ? XLSX.utils.json_to_sheet(data, { header: headers })
-      : XLSX.utils.aoa_to_sheet([headers]);
+      ? XLSX.utils.json_to_sheet(data, { header: ACTIVITY_HEADERS })
+      : XLSX.utils.aoa_to_sheet([ACTIVITY_HEADERS]);
     const baseName = `users-by-guesses-${new Date().toISOString().slice(0, 10)}`;
 
     if (format === 'csv') {
@@ -1096,15 +1095,31 @@ router.get('/users/export-by-activity', async (req, res) => {
       return res.send('﻿' + csv); // BOM כדי ש-Excel יציג עברית כראוי
     }
 
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'UsersByGuesses');
-    const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' });
+    const buf = rowsToXlsxBuffer(data, ACTIVITY_HEADERS, 'UsersByGuesses');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${baseName}.xlsx"`);
     return res.send(buf);
   } catch (e) {
     console.error('admin/users/export-by-activity:', e);
     res.status(500).json({ error: 'שגיאת שרת' });
+  }
+});
+
+// כתובת ציבורית (לוואטסאפ/TmpSender) של ייצוא לפי מחלקה/כמות/אחוז. ?only_phone=05... למצב בדיקה
+router.post('/users/export-by-activity-link', async (req, res) => {
+  try {
+    let data = await buildActivityRows(req.query);
+    const onlyPhone = String(req.query.only_phone || '').replace(/[^\d+]/g, '');
+    if (onlyPhone) {
+      const found = data.find((r) => String(r['טלפון']).replace(/[^\d+]/g, '') === onlyPhone);
+      data = [found || { 'שם': 'בדיקה', 'טלפון': onlyPhone, 'מחלקה': '', 'מספר ניחושים': 0, 'נכונים': 0, '% נכונים': 0, 'מספר נקודות': 0, 'מיקום נוכחי': '' }];
+    }
+    const buf = rowsToXlsxBuffer(data, ACTIVITY_HEADERS, 'UsersByGuesses');
+    const url = await publishXlsxToPublicUrl(req, buf, 'activity');
+    res.json({ ok: true, url, count: data.length });
+  } catch (e) {
+    console.error('admin/users/export-by-activity-link:', e);
+    res.status(500).json({ error: e.message || 'שגיאת שרת' });
   }
 });
 

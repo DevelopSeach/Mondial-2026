@@ -963,6 +963,7 @@ function MissingGuessesTab() {
   const [missingGames, setMissingGames] = useState(5);
   const [exporting, setExporting] = useState(null);
   const [waBusy, setWaBusy] = useState(false);
+  const [waActBusy, setWaActBusy] = useState(false);
   const [err, setErr] = useState('');
 
   // תיבה שנייה: לפי מחלקה + טווח כמות ניחושים שהוזנו
@@ -1011,31 +1012,36 @@ function MissingGuessesTab() {
     }
   };
 
-  // יוצר קובץ XLS ציבורי וקופץ ל-TmpSender לשליחת וואטסאפ (תבנית mon2026_high_scores)
-  const sendWhatsapp = async () => {
-    setWaBusy(true); setErr('');
+  // יוצר קובץ XLS ציבורי לכל תיבת ייצוא וקופץ ל-TmpSender לשליחת וואטסאפ (תבנית mon2026_high_scores)
+  const sendWhatsapp = async (linkPath, setBusy) => {
+    setBusy(true); setErr('');
     try {
-      const { data } = await api.post(`/admin/users/export-missing-link?games=${missingGames}`);
+      const { data } = await api.post(linkPath);
       const url = 'https://tmpsender.seach.co.il/?xls=' + encodeURIComponent(data.url)
         + '&template=' + encodeURIComponent('mon2026_high_scores');
       window.open(url, '_blank');
     } catch (e) {
       setErr(errMsg(e));
     } finally {
-      setWaBusy(false);
+      setBusy(false);
     }
+  };
+
+  // פרמטרי הסינון של תיבת "לפי מחלקה וכמות ניחושים" (משותף לייצוא ולוואטסאפ)
+  const activityQuery = () => {
+    const params = new URLSearchParams({ department: actDept });
+    if (actMin !== '') params.set('min', actMin);
+    if (actMax !== '') params.set('max', actMax);
+    if (actPct !== '') params.set('min_correct_pct', actPct);
+    return params.toString();
   };
 
   const exportActivity = async (format) => {
     setExportingAct(format);
     setErr('');
     try {
-      const params = new URLSearchParams({ format, department: actDept });
-      if (actMin !== '') params.set('min', actMin);
-      if (actMax !== '') params.set('max', actMax);
-      if (actPct !== '') params.set('min_correct_pct', actPct);
       const { data } = await api.get(
-        `/admin/users/export-by-activity?${params.toString()}`,
+        `/admin/users/export-by-activity?format=${format}&${activityQuery()}`,
         { responseType: 'blob' }
       );
       downloadBlob(data, format, `users-by-guesses`);
@@ -1083,7 +1089,7 @@ function MissingGuessesTab() {
           <button
             className="btn btn-sm"
             style={{ background: '#25D366', color: '#fff', borderColor: '#25D366' }}
-            onClick={sendWhatsapp}
+            onClick={() => sendWhatsapp(`/admin/users/export-missing-link?games=${missingGames}`, setWaBusy)}
             disabled={waBusy}
           >
             {waBusy ? 'פותח...' : 'שלח ב-WhatsApp'}
@@ -1151,6 +1157,14 @@ function MissingGuessesTab() {
             disabled={exportingAct !== null}
           >
             {exportingAct === 'csv' ? 'מייצא...' : 'ייצוא CSV'}
+          </button>
+          <button
+            className="btn btn-sm"
+            style={{ background: '#25D366', color: '#fff', borderColor: '#25D366' }}
+            onClick={() => sendWhatsapp(`/admin/users/export-by-activity-link?${activityQuery()}`, setWaActBusy)}
+            disabled={waActBusy}
+          >
+            {waActBusy ? 'פותח...' : 'שלח ב-WhatsApp'}
           </button>
         </div>
       </SettingsCard>
