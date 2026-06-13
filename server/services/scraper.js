@@ -84,13 +84,17 @@ async function scrapeFromESPN() {
     const awayCode = teamCode(away.team && away.team.displayName);
     if (!homeCode || !awayCode) continue;
 
-    // המשחק ב-DB לפי הצמד (ללא תלות בסטטוס — כדי לתקן גם זמן של משחק שכבר הסתיים)
+    // המשחק ב-DB לפי הצמד בכל סדר (ESPN לעיתים מציג בית/חוץ הפוך מהזריעה).
+    // לא הופכים את בית/חוץ ב-DB (כדי לא להפוך ניחושים קיימים) — רק מתאימים את הכיוון.
     const match = await db.one(`
-      SELECT id, kickoff, status FROM matches
-      WHERE home_code = ? AND away_code = ?
+      SELECT id, kickoff, status, home_code, away_code FROM matches
+      WHERE (home_code = ? AND away_code = ?) OR (home_code = ? AND away_code = ?)
       ORDER BY kickoff ASC LIMIT 1
-    `, [homeCode, awayCode]);
+    `, [homeCode, awayCode, awayCode, homeCode]);
     if (!match) continue;
+
+    // האם כיוון ה-DB תואם ל-ESPN (בית=בית) או הפוך
+    const sameOrientation = match.home_code === homeCode;
 
     // ── סנכרון זמן פתיחה מ-ESPN (מקור-אמת ללוח הזמנים) ──
     // ev.date הוא ISO ב-UTC; ה-DB מאחסן UTC נאיבי ('YYYY-MM-DD HH:MM:SS').
@@ -111,8 +115,11 @@ async function scrapeFromESPN() {
     const state = comp.status && comp.status.type && comp.status.type.state;
     if (match.status !== 'finished' && state !== 'pre' && Number.isInteger(hs) && Number.isInteger(as)) {
       const status = state === 'post' ? 'finished' : 'live';
-      if (await updateMatchScore(match.id, hs, as, status)) {
-        updated.push({ id: match.id, score: `${homeCode} ${hs}-${as} ${awayCode}`, status });
+      // התאמת התוצאה לכיוון ה-DB (אם הפוך — מחליפים)
+      const dbHome = sameOrientation ? hs : as;
+      const dbAway = sameOrientation ? as : hs;
+      if (await updateMatchScore(match.id, dbHome, dbAway, status)) {
+        updated.push({ id: match.id, score: `${match.home_code} ${dbHome}-${dbAway} ${match.away_code}`, status });
       }
     }
   }
