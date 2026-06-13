@@ -70,11 +70,15 @@ export default function Predictions() {
       api.get('/teams'),
       api.get('/predictions/my'),
       api.get('/predictions/players'),
-      api.get('/schedule')
-    ]).then(([m, t, p, pl, scheduleRes]) => {
+      api.get('/schedule'),
+      api.get('/site/scoring')
+    ]).then(([m, t, p, pl, scheduleRes, scoringRes]) => {
       setMatches(m.data);
       setTeams(t.data);
       setPlayers(pl.data || []);
+      // נעילת ניחושים — לפי ההגדרה בשרת (lock_hours_before), במקום ערך קבוע
+      const lh = Number(scoringRes?.data?.lockHoursBefore);
+      if (Number.isFinite(lh) && lh >= 0) setLockHours(lh);
       const specialLockRow = (scheduleRes.data || []).find((item) => item.title === 'סגירת ניחושים מיוחדים');
       if (specialLockRow?.start_at) {
         const raw = String(specialLockRow.start_at);

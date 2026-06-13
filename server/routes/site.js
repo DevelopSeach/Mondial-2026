@@ -138,12 +138,13 @@ router.get('/scoring', auth(false), async (req, res) => {
       'scoring_goal_diff',
       'scoring_champion',
       'scoring_runner_up',
-      'scoring_top_scorer'
+      'scoring_top_scorer',
+      'lock_hours_before'
     ];
     const rows = await db.query(`
       SELECT \`key\`, \`value\`
       FROM settings
-      WHERE \`key\` IN (?, ?, ?, ?, ?, ?)
+      WHERE \`key\` IN (${keys.map(() => '?').join(', ')})
     `, keys);
     const values = Object.fromEntries(rows.map((row) => [row.key, Number(row.value || 0)]));
     res.json({
@@ -152,7 +153,9 @@ router.get('/scoring', auth(false), async (req, res) => {
       goalDiff: values.scoring_goal_diff || 1,
       champion: values.scoring_champion || 20,
       runnerUp: values.scoring_runner_up || 10,
-      topScorer: values.scoring_top_scorer || 15
+      topScorer: values.scoring_top_scorer || 15,
+      // שעות נעילה לפני פתיחת המשחק (0 הוא ערך תקין — נעילה בעת פתיחת המשחק)
+      lockHoursBefore: values.lock_hours_before ?? 1
     });
   } catch (e) {
     console.error('site/scoring:', e);
