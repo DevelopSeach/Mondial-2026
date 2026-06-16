@@ -849,6 +849,8 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
   text-align: center;
   font-family: var(--font-numeric);
   font-size: 32px;
+  line-height: 1;
+  padding: 0;
   border: 2px solid var(--ink);
   background: var(--paper);
   border-radius: 4px;
@@ -867,6 +869,16 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
 .score-input.score-high { background: rgba(58, 130, 246, 0.18); }
 .score-input.score-low { background: rgba(239, 68, 68, 0.18); }
 .score-input.score-equal { background: rgba(34, 197, 94, 0.18); }
+
+.score-input::-webkit-outer-spin-button,
+.score-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.score-input[type=number] {
+  -moz-appearance: textfield;
+}
 
 .scores-col {
   display: flex;
@@ -1520,7 +1532,19 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
   .prediction-row .match-team { gap: 6px; }
   .prediction-row .match-team .name { max-width: 60px; font-size: 12px; }
   .prediction-row .scores-block { justify-content: center; }
-  .prediction-row .score-input { width: 40px; }
+  .prediction-row .score-input {
+    width: 36px;
+    height: 42px;
+    font-size: 24px;
+    border-width: 1.5px;
+  }
+  .prediction-row .dash {
+    font-size: 18px;
+    line-height: 1;
+  }
+  .prediction-row .scores-block {
+    gap: 4px;
+  }
   .login-hero h1 { font-size: 56px; }
   .login-form-area { padding: 30px 20px; }
   .login-form h2 { font-size: 40px; }
