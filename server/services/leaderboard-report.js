@@ -10,8 +10,7 @@ const db = require('../db');
 const { leaderboard } = require('./scoring');
 const { getShabbatState } = require('../lib/shabbat');
 
-const FONT_PATH = path.join(__dirname, '..', 'assets', 'fonts', 'Alef-Regular.ttf');
-const FONT_FAMILY = 'Alef';
+const TEXT_FONT_STACK = 'Noto Sans Hebrew, DejaVu Sans, Liberation Sans, sans-serif';
 const LEADERBOARD_REPORT_LIMIT = 10;
 const USER_RESULTS_SETTING_KEYS = [
   'smtp_server', 'smtp_port', 'smtp_security', 'smtp_user', 'smtp_password',
@@ -132,9 +131,14 @@ function normalizeBadgeList(badges) {
   return BADGE_ORDER.filter((id) => byId.has(id)).map((id) => byId.get(id));
 }
 
-function badgeEmojiText(badges) {
+function badgeSvgText(badges) {
   const ordered = normalizeBadgeList(badges);
-  return ordered.length ? ordered.map((b) => b.emoji).join(' ') : '—';
+  if (!ordered.length) return '—';
+  return ordered.map((b) => {
+    const meta = BADGE_META[b.id] || {};
+    const label = meta.name || b.id;
+    return `${b.emoji || ''} ${label}`.trim();
+  }).join('  ·  ');
 }
 
 function badgeHtmlPills(badges) {
@@ -204,36 +208,39 @@ function buildLeaderboardSvg(rows, dateLabel, limit) {
   const X_PTS = 430;    // נקודות
   const X_EXACT = 270;  // ניחושים מדויקים
   const X_PRED = 120;   // סה״כ ניחושים
+  const NAME_CLIP_LEFT = 645;
+  const NAME_CLIP_WIDTH = 345;
 
   const parts = [];
   parts.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`);
   parts.push(`<rect width="${W}" height="${H}" fill="#0b3d2e"/>`);
   parts.push(`<rect x="0" y="0" width="${W}" height="96" fill="#08311f"/>`);
-  parts.push(`<text x="28" y="28" font-family="${FONT_FAMILY}" font-size="16" fill="#cfe8d8" text-anchor="start">בס"ד</text>`);
-  parts.push(`<text x="${W - 30}" y="50" font-family="${FONT_FAMILY}" font-size="34" font-weight="bold" fill="#ffd700" text-anchor="end">טבלת המצטיינים</text>`);
-  parts.push(`<text x="${W - 30}" y="80" font-family="${FONT_FAMILY}" font-size="18" fill="#cfe8d8" text-anchor="end">מונדיאל 2026 · ${xmlEscape(dateLabel)}</text>`);
+  parts.push(`<text x="28" y="28" font-family="${TEXT_FONT_STACK}" font-size="16" fill="#cfe8d8" text-anchor="start">בס"ד</text>`);
+  parts.push(`<text x="${W - 30}" y="50" font-family="${TEXT_FONT_STACK}" font-size="34" font-weight="bold" fill="#ffd700" text-anchor="end">טבלת המצטיינים</text>`);
+  parts.push(`<text x="${W - 30}" y="80" font-family="${TEXT_FONT_STACK}" font-size="18" fill="#cfe8d8" text-anchor="end">מונדיאל 2026 · ${xmlEscape(dateLabel)}</text>`);
 
   // כותרות עמודות
   const hy = headTop;
-  parts.push(`<text x="${X_RANK}" y="${hy}" font-family="${FONT_FAMILY}" font-size="18" fill="#ffd700" text-anchor="middle">מקום</text>`);
-  parts.push(`<text x="${X_NAME}" y="${hy}" font-family="${FONT_FAMILY}" font-size="18" fill="#ffd700" text-anchor="end">שם</text>`);
-  parts.push(`<text x="${X_BADGES}" y="${hy}" font-family="${FONT_FAMILY}" font-size="18" fill="#ffd700" text-anchor="end">תגי הישג</text>`);
-  parts.push(`<text x="${X_PTS}" y="${hy}" font-family="${FONT_FAMILY}" font-size="18" fill="#ffd700" text-anchor="middle">נק׳</text>`);
-  parts.push(`<text x="${X_EXACT}" y="${hy}" font-family="${FONT_FAMILY}" font-size="18" fill="#ffd700" text-anchor="middle">מדויקים</text>`);
-  parts.push(`<text x="${X_PRED}" y="${hy}" font-family="${FONT_FAMILY}" font-size="18" fill="#ffd700" text-anchor="middle">ניחושים</text>`);
+  parts.push(`<text x="${X_RANK}" y="${hy}" font-family="${TEXT_FONT_STACK}" font-size="18" fill="#ffd700" text-anchor="middle">מקום</text>`);
+  parts.push(`<text x="${X_NAME}" y="${hy}" font-family="${TEXT_FONT_STACK}" font-size="18" fill="#ffd700" text-anchor="end">שם</text>`);
+  parts.push(`<text x="${X_BADGES}" y="${hy}" font-family="${TEXT_FONT_STACK}" font-size="18" fill="#ffd700" text-anchor="end">תגי הישג</text>`);
+  parts.push(`<text x="${X_PTS}" y="${hy}" font-family="${TEXT_FONT_STACK}" font-size="18" fill="#ffd700" text-anchor="middle">נק׳</text>`);
+  parts.push(`<text x="${X_EXACT}" y="${hy}" font-family="${TEXT_FONT_STACK}" font-size="18" fill="#ffd700" text-anchor="middle">מדויקים</text>`);
+  parts.push(`<text x="${X_PRED}" y="${hy}" font-family="${TEXT_FONT_STACK}" font-size="18" fill="#ffd700" text-anchor="middle">ניחושים</text>`);
   parts.push(`<line x1="20" y1="${hy + 12}" x2="${W - 20}" y2="${hy + 12}" stroke="#2d6e3e" stroke-width="2"/>`);
 
   top.forEach((r, i) => {
-    const y = headTop + rowH * (i + 1) + 18;
-    const cy = y - 14;
+    const cy = headTop + rowH * (i + 1) + rowH / 2;
+    const clipId = `name-clip-${i}`;
     if (i % 2 === 0) parts.push(`<rect x="14" y="${cy}" width="${W - 28}" height="${rowH}" fill="#ffffff10"/>`);
+    parts.push(`<clipPath id="${clipId}"><rect x="${NAME_CLIP_LEFT}" y="${cy - rowH / 2}" width="${NAME_CLIP_WIDTH}" height="${rowH}" /></clipPath>`);
     const rankColor = r.rank === 1 ? '#ffd700' : r.rank === 2 ? '#c0c0c0' : r.rank === 3 ? '#cd7f32' : '#ffffff';
-    parts.push(`<text x="${X_RANK}" y="${y}" font-family="${FONT_FAMILY}" font-size="22" font-weight="bold" fill="${rankColor}" text-anchor="middle">${r.rank}</text>`);
-    parts.push(`<text x="${X_NAME}" y="${y}" font-family="${FONT_FAMILY}" font-size="21" fill="#ffffff" text-anchor="end" textLength="330" lengthAdjust="spacingAndGlyphs">${xmlEscape(r.name)}</text>`);
-    parts.push(`<text x="${X_BADGES}" y="${y}" font-family="${FONT_FAMILY}" font-size="18" fill="#d8f7df" text-anchor="end">${xmlEscape(badgeEmojiText(r.badges))}</text>`);
-    parts.push(`<text x="${X_PTS}" y="${y}" font-family="${FONT_FAMILY}" font-size="22" font-weight="bold" fill="#7CFC9A" text-anchor="middle">${r.total_points}</text>`);
-    parts.push(`<text x="${X_EXACT}" y="${y}" font-family="${FONT_FAMILY}" font-size="20" fill="#cfe8d8" text-anchor="middle">${r.exact_hits}</text>`);
-    parts.push(`<text x="${X_PRED}" y="${y}" font-family="${FONT_FAMILY}" font-size="20" fill="#cfe8d8" text-anchor="middle">${r.num_predictions}</text>`);
+    parts.push(`<text x="${X_RANK}" y="${cy}" font-family="${TEXT_FONT_STACK}" font-size="22" font-weight="bold" fill="${rankColor}" text-anchor="middle" dominant-baseline="middle">${r.rank}</text>`);
+    parts.push(`<text x="${X_NAME}" y="${cy}" font-family="${TEXT_FONT_STACK}" font-size="20" fill="#ffffff" text-anchor="end" dominant-baseline="middle" clip-path="url(#${clipId})">${xmlEscape(r.name)}</text>`);
+    parts.push(`<text x="${X_BADGES}" y="${cy}" font-family="${TEXT_FONT_STACK}" font-size="14" fill="#d8f7df" text-anchor="end" dominant-baseline="middle">${xmlEscape(badgeSvgText(r.badges))}</text>`);
+    parts.push(`<text x="${X_PTS}" y="${cy}" font-family="${TEXT_FONT_STACK}" font-size="22" font-weight="bold" fill="#7CFC9A" text-anchor="middle" dominant-baseline="middle">${r.total_points}</text>`);
+    parts.push(`<text x="${X_EXACT}" y="${cy}" font-family="${TEXT_FONT_STACK}" font-size="20" fill="#cfe8d8" text-anchor="middle" dominant-baseline="middle">${r.exact_hits}</text>`);
+    parts.push(`<text x="${X_PRED}" y="${cy}" font-family="${TEXT_FONT_STACK}" font-size="20" fill="#cfe8d8" text-anchor="middle" dominant-baseline="middle">${r.num_predictions}</text>`);
   });
 
   parts.push('</svg>');
@@ -248,9 +255,8 @@ async function renderLeaderboardPng(limit = LEADERBOARD_REPORT_LIMIT, rows = nul
     timeZone: 'Asia/Jerusalem', day: '2-digit', month: '2-digit', year: 'numeric'
   }).format(new Date());
   const svg = buildLeaderboardSvg(board, dateLabel, limit);
-  const fontBuffer = fs.readFileSync(FONT_PATH);
   const resvg = new Resvg(svg, {
-    font: { fontBuffers: [fontBuffer], defaultFontFamily: FONT_FAMILY, loadSystemFonts: false },
+    font: { defaultFontFamily: 'Noto Sans Hebrew', loadSystemFonts: true },
     background: '#0b3d2e'
   });
   return { png: resvg.render().asPng(), dateLabel, count: board.length, topRows };
