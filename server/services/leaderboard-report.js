@@ -379,9 +379,10 @@ async function getUserRecipients(board, audience) {
   return ids.map((id) => byId.get(id)).filter(Boolean);
 }
 
-async function sendUserResultsReport() {
+async function sendUserResultsReport(options = {}) {
+  const force = Boolean(options && options.force);
   const s = await readSettingsMap(USER_RESULTS_SETTING_KEYS);
-  if (!isTruthySetting(s.send_results_to_users)) {
+  if (!force && !isTruthySetting(s.send_results_to_users)) {
     return { skipped: 'disabled' };
   }
   if (!s.smtp_server || !s.smtp_user || !s.smtp_password) {
