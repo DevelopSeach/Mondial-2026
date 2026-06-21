@@ -1181,7 +1181,7 @@ router.post('/leaderboard-report/send', async (req, res) => {
 // שליחה ידנית של דוח תוצאות למשתמשים לפי ההגדרות
 router.post('/user-results/send', async (req, res) => {
   try {
-    const result = await sendUserResultsReport();
+    const result = await sendUserResultsReport({ force: true });
     res.json({ ok: true, ...result });
   } catch (e) {
     console.error('admin/user-results/send:', e);
