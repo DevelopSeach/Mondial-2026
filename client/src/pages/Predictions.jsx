@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api, { errMsg } from '../api/client';
 import Flag from '../components/Flag';
-import ScoreText from '../components/ScoreText';
 import { useTranslation } from '../i18n/TranslationContext';
 import { useAuth } from '../context/AuthContext';
 import { ilDate, ilTime, ilMs, ilDayKey } from '../utils/time';
@@ -411,10 +410,7 @@ export default function Predictions() {
                       <span className="match-time-under">{time}</span>
                       {finished && m.home_score != null && m.away_score != null && (
                         <span className="match-final-score">
-                          <span style={{ display: 'inline-flex', gap: 6, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                            <span>{t('predictions.result_label')}</span>
-                            <ScoreText home={m.home_score} away={m.away_score} />
-                          </span>
+                          {t('predictions.result', { home: m.home_score, away: m.away_score })}
                         </span>
                       )}
                     </div>
@@ -437,10 +433,7 @@ export default function Predictions() {
                     </div>
                     {finished && Number.isInteger(p.home) && Number.isInteger(p.away) && (
                       <div className="prediction-finished-summary">
-                        <span style={{ display: 'inline-flex', gap: 6, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                          <span>{t('home.my_guess_label')}</span>
-                          <ScoreText home={p.home} away={p.away} />
-                        </span>
+                        <span>{t('home.my_guess', { home: p.home, away: p.away })}</span>
                         <span className={`points-pill ${p.points >= 5 ? 'exact' : p.points >= 3 ? 'high' : 'zero'}`}>
                           {Number(p.points || 0)} {t('common.points')}
                         </span>

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import api from '../api/client';
 import MatchCard from '../components/MatchCard';
-import ScoreText from '../components/ScoreText';
 import { useTranslation } from '../i18n/TranslationContext';
 import { ilDate, ilDayKey } from '../utils/time';
 
@@ -77,10 +76,7 @@ export default function Matches() {
                   <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap'}}>
                     {hasPrediction ? (
                       <span style={{color:'var(--pitch)', fontWeight:700, fontSize:14}}>
-                        <span style={{ display: 'inline-flex', gap: 6, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                          <span>{t('home.my_guess_label')}</span>
-                          <ScoreText home={prediction.home_score} away={prediction.away_score} />
-                        </span>
+                        {t('home.my_guess', { home: prediction.home_score, away: prediction.away_score })}
                       </span>
                     ) : (
                       <span style={{color:'var(--muted)', fontWeight:600, fontSize:14}}>
