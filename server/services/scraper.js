@@ -68,11 +68,37 @@ const STAGE_WINDOWS = [
   { stage: 'group', start: '2026-06-11T00:00:00Z', end: '2026-06-27T23:59:59Z' },
   { stage: 'round_of_32', start: '2026-06-28T00:00:00Z', end: '2026-07-03T23:59:59Z' },
   { stage: 'round_of_16', start: '2026-07-04T00:00:00Z', end: '2026-07-07T23:59:59Z' },
-  { stage: 'quarter_final', start: '2026-07-09T00:00:00Z', end: '2026-07-11T23:59:59Z' },
-  { stage: 'semi_final', start: '2026-07-14T00:00:00Z', end: '2026-07-15T23:59:59Z' },
+  { stage: 'quarter_final', start: '2026-07-09T00:00:00Z', end: '2026-07-12T23:59:59Z' },
+  { stage: 'semi_final', start: '2026-07-14T00:00:00Z', end: '2026-07-16T23:59:59Z' },
   { stage: 'third_place', start: '2026-07-18T00:00:00Z', end: '2026-07-18T23:59:59Z' },
   { stage: 'final', start: '2026-07-19T00:00:00Z', end: '2026-07-19T23:59:59Z' }
 ];
+
+const ESPN_STAGE_SLUGS = new Map([
+  ['group', 'group'],
+  ['group-stage', 'group'],
+  ['groupstage', 'group'],
+  ['round-of-32', 'round_of_32'],
+  ['round-of-16', 'round_of_16'],
+  ['quarterfinals', 'quarter_final'],
+  ['quarter-finals', 'quarter_final'],
+  ['quarter-finals-', 'quarter_final'],
+  ['semifinals', 'semi_final'],
+  ['semi-finals', 'semi_final'],
+  ['third-place', 'third_place'],
+  ['third-place-match', 'third_place'],
+  ['finals', 'final'],
+  ['final', 'final']
+]);
+
+function normalizeStageSlug(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/_+/g, '-')
+    .replace(/--+/g, '-');
+}
 
 function detectStageFromDate(iso) {
   const ms = new Date(iso).getTime();
@@ -82,6 +108,19 @@ function detectStageFromDate(iso) {
     const b = new Date(end).getTime();
     return ms >= a && ms <= b;
   })?.stage || null;
+}
+
+function detectStageFromEvent(ev) {
+  const slug = normalizeStageSlug(ev?.season?.slug);
+  if (ESPN_STAGE_SLUGS.has(slug)) return ESPN_STAGE_SLUGS.get(slug);
+
+  const altGameNote = normalizeStageSlug(ev?.competitions?.[0]?.altGameNote);
+  if (ESPN_STAGE_SLUGS.has(altGameNote)) return ESPN_STAGE_SLUGS.get(altGameNote);
+
+  const name = normalizeStageSlug(ev?.name);
+  if (ESPN_STAGE_SLUGS.has(name)) return ESPN_STAGE_SLUGS.get(name);
+
+  return detectStageFromDate(ev?.date || ev?.competitions?.[0]?.date || null);
 }
 
 function getStageWindow(stage) {
@@ -111,7 +150,7 @@ function eventToFixture(ev) {
   const comp = ev?.competitions && ev.competitions[0];
   if (!comp) return null;
   const kickoff = ev.date || comp.date || null;
-  const stage = detectStageFromDate(kickoff);
+  const stage = detectStageFromEvent(ev);
   if (!stage) return null;
   const homeName = eventLabel(comp, 'home');
   const awayName = eventLabel(comp, 'away');
