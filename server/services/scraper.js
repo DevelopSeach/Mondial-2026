@@ -164,6 +164,21 @@ function preferConcreteLabel(incoming, existing) {
   return incoming || existing || null;
 }
 
+function canInsertFixture(fixture) {
+  if (!fixture) return false;
+  const labels = [
+    fixture.homeLabelHe,
+    fixture.homeLabelEn,
+    fixture.homeLabelAr,
+    fixture.awayLabelHe,
+    fixture.awayLabelEn,
+    fixture.awayLabelAr
+  ].filter(Boolean);
+  if (!labels.length) return false;
+  if (!fixture.stage || !String(fixture.stage).startsWith('round_of_')) return true;
+  return labels.some((label) => !isPlaceholderTeamLabel(label));
+}
+
 function eventLabel(comp, side) {
   const competitor = comp?.competitors?.find((c) => c.homeAway === side);
   const teamName = competitor?.team?.displayName || competitor?.team?.shortDisplayName || competitor?.team?.name || '';
@@ -276,6 +291,8 @@ async function upsertFixture(fixture) {
     ]);
     return { id: existing.id, action: 'updated' };
   }
+
+  if (!canInsertFixture(fixture)) return null;
 
   const last = await db.one('SELECT COALESCE(MAX(id), 0) AS m FROM matches');
   const newId = last.m + 1;
