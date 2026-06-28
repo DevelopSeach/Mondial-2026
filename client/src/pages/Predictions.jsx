@@ -107,11 +107,12 @@ export default function Predictions() {
   }, []);
 
   const onChange = (matchId, side, value) => {
+    const cleaned = String(value ?? '').replace(/[^\d]/g, '');
     setPredictions(prev => ({
       ...prev,
       [matchId]: {
         ...prev[matchId],
-        [side]: value === '' ? '' : Number(value),
+        [side]: cleaned === '' ? '' : Number(cleaned),
         saved: false
       }
     }));
@@ -130,8 +131,11 @@ export default function Predictions() {
   const randomFill = () => {
     setPredictions(prev => {
       const next = { ...prev };
+      const stageMatches = tab === 'all'
+        ? matches
+        : matches.filter((m) => m.stage === tab);
       let filled = 0;
-      for (const m of matches) {
+      for (const m of stageMatches) {
         if (m.status === 'finished') continue;
         const lockTime = ilMs(m.kickoff) - lockHours * 3600 * 1000;
         if (Date.now() >= lockTime) continue;
@@ -333,7 +337,7 @@ export default function Predictions() {
           ))}
           <button className={`tab ${tab==='special'?'active':''}`} onClick={() => setTab('special')}>{t('predictions.special')}</button>
         </div>
-        {tab === 'group' && (
+        {tab !== 'special' && (
           <button
             type="button"
             className="btn btn-outline"
@@ -401,18 +405,20 @@ export default function Predictions() {
                     <div className="scores-col">
                       <div className="scores-block">
                         <input
-                          type="number"
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
                           className={`score-input ${scoreTone('home', p.home, p.away)}`}
-                          min={0} max={30}
                           value={p.home ?? ''}
                           disabled={locked || finished}
                           onChange={e => onChange(m.id, 'home', e.target.value)}
                         />
                         <span className="dash">:</span>
                         <input
-                          type="number"
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
                           className={`score-input ${scoreTone('away', p.home, p.away)}`}
-                          min={0} max={30}
                           value={p.away ?? ''}
                           disabled={locked || finished}
                           onChange={e => onChange(m.id, 'away', e.target.value)}

@@ -888,15 +888,17 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
   text-align: center;
   font-family: var(--font-numeric);
   font-size: 32px;
-  line-height: 1;
+  line-height: 1.05;
   padding: 0;
   border: 2px solid var(--ink);
   background: var(--paper);
   border-radius: 4px;
   outline: none;
   transition: all .15s;
-  appearance: auto;
-  -moz-appearance: auto;
+  appearance: textfield;
+  -webkit-appearance: none;
+  -moz-appearance: textfield;
+  font-variant-numeric: tabular-nums;
 }
 .score-input:focus {
   border-color: var(--gold);
@@ -917,6 +919,10 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
 
 .score-input[type=number] {
   -moz-appearance: textfield;
+}
+
+.score-input[type=text] {
+  -webkit-text-fill-color: currentColor;
 }
 
 .scores-col {
