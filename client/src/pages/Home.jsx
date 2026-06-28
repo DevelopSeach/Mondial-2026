@@ -130,7 +130,10 @@ export default function Home() {
               <MatchCard key={m.id} match={m}>
                 <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap'}}>
                   {hasPrediction ? (
-                    <span style={{color:'var(--pitch)', fontWeight:700, fontSize:14, display:'inline-flex', gap:6, alignItems:'baseline', flexWrap:'wrap'}}>
+                    <span
+                      dir="ltr"
+                      style={{color:'var(--pitch)', fontWeight:700, fontSize:14, display:'inline-flex', gap:6, alignItems:'baseline', flexWrap:'wrap'}}
+                    >
                       <span>{t('home.my_guess_label')}</span>
                       <ScoreText home={p.home_score} away={p.away_score} />
                     </span>

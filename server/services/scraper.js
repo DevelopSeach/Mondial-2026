@@ -88,6 +88,167 @@ function normalizeVenue(value) {
   return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
+function normalizeText(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ');
+}
+
+function eventLabel(comp, side) {
+  const competitor = comp?.competitors?.find((c) => c.homeAway === side);
+  const teamName = competitor?.team?.displayName || competitor?.team?.shortDisplayName || competitor?.team?.name || '';
+  return String(teamName || '').trim();
+}
+
+function eventToFixture(ev) {
+  const comp = ev?.competitions && ev.competitions[0];
+  if (!comp) return null;
+  const kickoff = ev.date || comp.date || null;
+  const stage = detectStageFromDate(kickoff);
+  if (!stage) return null;
+  const homeName = eventLabel(comp, 'home');
+  const awayName = eventLabel(comp, 'away');
+  const homeCode = teamCode(homeName);
+  const awayCode = teamCode(awayName);
+  const venue = comp?.venue?.fullName || null;
+  return {
+    stage,
+    kickoff,
+    venue,
+    homeCode,
+    awayCode,
+    homeLabelHe: homeName || null,
+    homeLabelEn: homeName || null,
+    homeLabelAr: homeName || null,
+    awayLabelHe: awayName || null,
+    awayLabelEn: awayName || null,
+    awayLabelAr: awayName || null,
+    status: 'scheduled'
+  };
+}
+
+async function findFixtureMatch(fixture) {
+  if (!fixture) return null;
+
+  if (fixture.homeCode && fixture.awayCode) {
+    const byTeams = await db.one(`
+      SELECT id, kickoff, status, home_code, away_code, stage, venue
+      FROM matches
+      WHERE (home_code = ? AND away_code = ?) OR (home_code = ? AND away_code = ?)
+      ORDER BY kickoff ASC, id ASC
+      LIMIT 1
+    `, [fixture.homeCode, fixture.awayCode, fixture.awayCode, fixture.homeCode]);
+    if (byTeams) return byTeams;
+  }
+
+  const byStage = await db.query(`
+    SELECT id, kickoff, status, home_code, away_code, stage, venue,
+      home_label_en, away_label_en
+    FROM matches
+    WHERE stage = ?
+    ORDER BY kickoff ASC, id ASC
+  `, [fixture.stage]);
+  if (!byStage.length) return null;
+
+  const targetMs = new Date(fixture.kickoff).getTime();
+  const fixtureHome = normalizeText(fixture.homeLabelEn || fixture.homeLabelHe || '');
+  const fixtureAway = normalizeText(fixture.awayLabelEn || fixture.awayLabelHe || '');
+  const venueKey = normalizeVenue(fixture.venue);
+
+  const scored = byStage.map((row) => {
+    let score = Math.abs(new Date(row.kickoff).getTime() - targetMs);
+    if (venueKey && normalizeVenue(row.venue) === venueKey) score -= 30 * 60 * 1000;
+    if (fixtureHome && normalizeText(row.home_label_en) === fixtureHome) score -= 60 * 60 * 1000;
+    if (fixtureAway && normalizeText(row.away_label_en) === fixtureAway) score -= 60 * 60 * 1000;
+    return { row, score };
+  });
+  scored.sort((a, b) => a.score - b.score);
+  return scored[0]?.row || null;
+}
+
+async function upsertFixture(fixture) {
+  const existing = await findFixtureMatch(fixture);
+  if (existing) {
+    const currentHomeCode = existing.home_code || null;
+    const currentAwayCode = existing.away_code || null;
+    const nextHomeCode = fixture.homeCode || currentHomeCode;
+    const nextAwayCode = fixture.awayCode || currentAwayCode;
+    const nextHomeHe = fixture.homeLabelHe || existing.home_label_he || null;
+    const nextHomeEn = fixture.homeLabelEn || existing.home_label_en || null;
+    const nextHomeAr = fixture.homeLabelAr || existing.home_label_ar || null;
+    const nextAwayHe = fixture.awayLabelHe || existing.away_label_he || null;
+    const nextAwayEn = fixture.awayLabelEn || existing.away_label_en || null;
+    const nextAwayAr = fixture.awayLabelAr || existing.away_label_ar || null;
+    const nextKickoff = new Date(fixture.kickoff).toISOString().slice(0, 19).replace('T', ' ');
+    await db.run(`
+      UPDATE matches
+      SET stage = ?, home_code = ?, away_code = ?,
+          home_label_he = ?, home_label_en = ?, home_label_ar = ?,
+          away_label_he = ?, away_label_en = ?, away_label_ar = ?,
+          kickoff = ?, venue = COALESCE(?, venue),
+          status = CASE WHEN status = 'finished' THEN status ELSE ? END,
+          updated_at = NOW()
+      WHERE id = ?
+    `, [
+      fixture.stage,
+      nextHomeCode,
+      nextAwayCode,
+      nextHomeHe,
+      nextHomeEn,
+      nextHomeAr,
+      nextAwayHe,
+      nextAwayEn,
+      nextAwayAr,
+      nextKickoff,
+      fixture.venue || null,
+      fixture.status,
+      existing.id
+    ]);
+    return { id: existing.id, action: 'updated' };
+  }
+
+  const last = await db.one('SELECT COALESCE(MAX(id), 0) AS m FROM matches');
+  const newId = last.m + 1;
+  const kickoff = new Date(fixture.kickoff).toISOString().slice(0, 19).replace('T', ' ');
+  await db.run(`
+    INSERT INTO matches (
+      id, stage, group_letter,
+      home_code, away_code,
+      home_label_he, home_label_en, home_label_ar,
+      away_label_he, away_label_en, away_label_ar,
+      kickoff, venue, status
+    )
+    VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `, [
+    newId,
+    fixture.stage,
+    fixture.homeCode || null,
+    fixture.awayCode || null,
+    fixture.homeLabelHe || null,
+    fixture.homeLabelEn || null,
+    fixture.homeLabelAr || null,
+    fixture.awayLabelHe || null,
+    fixture.awayLabelEn || null,
+    fixture.awayLabelAr || null,
+    kickoff,
+    fixture.venue || null,
+    fixture.status || 'scheduled'
+  ]);
+  return { id: newId, action: 'inserted' };
+}
+
+async function fetchESPNEvents() {
+  const url = `${ESPN_SCOREBOARD}?dates=20260611-20260719`;
+  const { data } = await axios.get(url, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Mondial2026Bot/1.0)' },
+    timeout: 20000
+  });
+  return (data && data.events) || [];
+}
+
 async function findFallbackMatch({ stage, kickoff, venue }) {
   const stageName = stage || detectStageFromDate(kickoff);
   if (!stageName) return null;
@@ -113,13 +274,8 @@ async function findFallbackMatch({ stage, kickoff, venue }) {
 
 async function scrapeFromESPN() {
   // Query the full tournament window so a single run can settle any finished game.
-  const url = `${ESPN_SCOREBOARD}?dates=20260611-20260719`;
   const updated = [];
-  const { data } = await axios.get(url, {
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Mondial2026Bot/1.0)' },
-    timeout: 20000
-  });
-  const events = (data && data.events) || [];
+  const events = await fetchESPNEvents();
   for (const ev of events) {
     const comp = ev.competitions && ev.competitions[0];
     if (!comp || !Array.isArray(comp.competitors)) continue;
@@ -188,6 +344,18 @@ async function scrapeFromESPN() {
   return updated;
 }
 
+async function scanAvailableFixturesFromESPN() {
+  const events = await fetchESPNEvents();
+  const changes = [];
+  for (const ev of events) {
+    const fixture = eventToFixture(ev);
+    if (!fixture) continue;
+    const change = await upsertFixture(fixture);
+    if (change) changes.push(change);
+  }
+  return changes;
+}
+
 // ─────────── api-football ───────────
 async function scrapeFromApiFootball() {
   const key = process.env.API_FOOTBALL_KEY;
@@ -238,4 +406,4 @@ async function runDailyUpdate() {
   }
 }
 
-module.exports = { runDailyUpdate, updateMatchScore, teamCode };
+module.exports = { runDailyUpdate, scanAvailableFixturesFromESPN, updateMatchScore, teamCode };

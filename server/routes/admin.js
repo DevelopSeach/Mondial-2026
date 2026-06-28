@@ -11,7 +11,7 @@ const nodemailer = require('nodemailer');
 const XLSX = require('xlsx');
 const db = require('../db');
 const { auth } = require('../middleware/auth');
-const { updateMatchScore, runDailyUpdate } = require('../services/scraper');
+const { updateMatchScore, runDailyUpdate, scanAvailableFixturesFromESPN } = require('../services/scraper');
 const { recalcForMatch, loadBadgeConfig, DEFAULT_BADGE_CONFIG, leaderboard } = require('../services/scoring');
 const { renderLeaderboardPng, sendLeaderboardReport, sendUserResultsReport } = require('../services/leaderboard-report');
 const { seedScheduleItems } = require('../lib/schedule-items');
@@ -466,7 +466,7 @@ async function removeSpecialPopupImage(popupId, imageUrl) {
 
 // מנהל מערכת מלא (admin) ניגש להכל. מנהל-משנה (manager) מוגבל לניהול משתמשים ומשחקים בלבד.
 const MANAGER_GET = [/^\/overview$/, /^\/departments$/];
-const MANAGER_ANY = [/^\/users(\/.*)?$/, /^\/matches(\/.*)?$/, /^\/scrape-now$/, /^\/recalculate$/];
+const MANAGER_ANY = [/^\/users(\/.*)?$/, /^\/matches(\/.*)?$/, /^\/scrape-now$/, /^\/scan-fixtures-now$/, /^\/recalculate$/];
 
 function adminGate(req, res, next) {
   if (req.user && req.user.isAdmin) return next();
@@ -1635,6 +1635,17 @@ router.post('/scrape-now', async (req, res) => {
     res.json(result);
   } catch (e) {
     console.error('admin/scrape-now:', e);
+    res.status(500).json({ error: 'שגיאת שרת' });
+  }
+});
+
+// סריקת משחקים זמינים מה-web והוספתם למסד הנתונים
+router.post('/scan-fixtures-now', async (req, res) => {
+  try {
+    const changes = await scanAvailableFixturesFromESPN();
+    res.json({ ok: true, scanned: changes.length, changes });
+  } catch (e) {
+    console.error('admin/scan-fixtures-now:', e);
     res.status(500).json({ error: 'שגיאת שרת' });
   }
 });

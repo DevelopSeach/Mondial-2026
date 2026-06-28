@@ -4,6 +4,7 @@ import api, { errMsg } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from '../i18n/TranslationContext';
 import Flag from '../components/Flag';
+import ScoreText from '../components/ScoreText';
 
 const PICKS = [
   { value: 'home', key: 'gg.pick', label: '1' },
@@ -227,7 +228,7 @@ export default function GuessGroupDetail() {
                         )}
                       </td>
                       <td style={{ textAlign: 'center' }}>
-                        {finished ? <strong>{b.actual_home}–{b.actual_away}</strong> : <span style={{ color: 'var(--muted)' }}>{locked ? t('gg.pending') : '—'}</span>}
+                        {finished ? <strong><ScoreText home={b.actual_home} away={b.actual_away} /></strong> : <span style={{ color: 'var(--muted)' }}>{locked ? t('gg.pending') : '—'}</span>}
                       </td>
                       <td style={{ textAlign: 'center' }}>
                         {finished
