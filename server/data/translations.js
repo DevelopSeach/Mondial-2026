@@ -399,6 +399,8 @@ const translations = {
   'aipred.conf_medium': { he: 'בינונית', en: 'Medium', ar: 'متوسطة' },
   'aipred.conf_high': { he: 'גבוהה', en: 'High', ar: 'عالية' },
   'reviews.member_review': { he: 'ריביו של חבר אתר', en: 'Member review', ar: 'مراجعة عضو' },
+  'reviews.challenge_cta': { he: 'אתגר את {name} בניחוש שיחים', en: 'Challenge {name} to a coin guess', ar: 'تحدَّ {name} بتخمين' },
+  'reviews.challenge_short': { he: 'אתגר בניחוש', en: 'Challenge', ar: 'تحدَّ' },
   'coin.challenge_open_title': { he: 'פתוח לאתגרי ניחוש', en: 'Open to challenges', ar: 'متاح للتحديات' },
   'coin.challenge_open_help': { he: 'כשהאפשרות פעילה — משתמשים אחרים יכולים לאתגר אותך לניחוש', en: 'When on, other users can challenge you to a bet', ar: 'عند التفعيل، يمكن للآخرين تحديك' },
   'coin.open_yes': { he: '✓ פתוח', en: '✓ Open', ar: '✓ مفتوح' },

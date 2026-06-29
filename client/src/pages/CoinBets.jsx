@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import api, { errMsg } from '../api/client';
 import Flag from '../components/Flag';
 import { CoinBadge } from '../components/CoinBadges';
@@ -29,7 +30,9 @@ function guessPhrase(t, propLabel, m, prop, negate) {
 export default function CoinBets() {
   const { user } = useAuth();
   const { t, locale, pickText } = useTranslation();
-  const [tab, setTab] = useState('board');
+  const location = useLocation();
+  const challenge = location.state?.challenge; // { userId, userName, matchId }
+  const [tab, setTab] = useState(challenge ? 'create' : 'board');
   const [wallet, setWallet] = useState(null);
   const [mine, setMine] = useState([]);
   const [open, setOpen] = useState([]);
@@ -89,6 +92,8 @@ export default function CoinBets() {
 
       {tab === 'create' && (
         <CreateBet matches={matches} propLabel={propLabel} wallet={wallet}
+          initialTarget={challenge ? { id: challenge.userId, name: challenge.userName } : null}
+          initialMatchId={challenge?.matchId}
           onCreated={() => { setTab('mine'); act(async () => {}, t('coin.created')); }} t={t} locale={locale} />
       )}
 
@@ -184,11 +189,11 @@ function MyBets({ mine, matchById, propLabel, userId, onCancel, locale, t }) {
   );
 }
 
-function CreateBet({ matches, propLabel, wallet, onCreated, locale, t }) {
-  const [matchId, setMatchId] = useState('');
+function CreateBet({ matches, propLabel, wallet, onCreated, locale, t, initialTarget, initialMatchId }) {
+  const [matchId, setMatchId] = useState(initialMatchId ? String(initialMatchId) : '');
   const [proposition, setProposition] = useState('home');
   const [stake, setStake] = useState(100);
-  const [target, setTarget] = useState(null);
+  const [target, setTarget] = useState(initialTarget || null);
   const [userQuery, setUserQuery] = useState('');
   const [userResults, setUserResults] = useState([]);
   const [busy, setBusy] = useState(false);

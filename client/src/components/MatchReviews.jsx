@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { useTranslation } from '../i18n/TranslationContext';
 import { useAuth } from '../context/AuthContext';
@@ -8,6 +9,7 @@ import { useAuth } from '../context/AuthContext';
 export default function MatchReviews({ matchId, bump = 0 }) {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [rows, setRows] = useState(null);
   const [count, setCount] = useState(null);
@@ -76,6 +78,16 @@ export default function MatchReviews({ matchId, bump = 0 }) {
                     title={t('reviews.vote_tip')}
                   >
                     {rev.my_vote ? '❤️' : '👂'} <span>{t('reviews.vote_action')}</span> · {rev.vote_count}
+                  </button>
+                )}
+                {user && !user.isGuest && rev.user_id !== user?.id && (
+                  <button
+                    type="button"
+                    className="review-challenge-btn"
+                    onClick={() => navigate('/coin-bets', { state: { challenge: { userId: rev.user_id, userName: rev.user_name, matchId } } })}
+                    title={t('reviews.challenge_cta', { name: rev.user_name })}
+                  >
+                    ⚔️ {t('reviews.challenge_short')}
                   </button>
                 )}
               </div>

@@ -2115,5 +2115,10 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
 .aipred-consensus { margin-top: 14px; padding-top: 12px; border-top: 1px solid #eee; font-size: 14px; line-height: 1.7; }
 .aipred-expl { color: var(--muted, #777); margin-top: 4px; }
 
+.review-challenge-btn {
+  border: 1px solid var(--gold, #e6b54a); background: #fffaf0; color: #8a6d12;
+  border-radius: 999px; padding: 4px 12px; font-size: 12px; font-weight: 700; cursor: pointer; margin-inline-start: 8px;
+}
+.review-challenge-btn:hover { background: var(--gold, #e6b54a); color: #3a2a05; }
 .pic-bonus-note { margin-top: 6px; color: var(--gold-deep, #b8860b); font-weight: 700; font-size: 13px; }
 .coin-pick-preview { margin-top: 8px; font-size: 14px; color: var(--pitch, #2a7); background: rgba(42,170,119,.08); padding: 6px 10px; border-radius: 8px; }

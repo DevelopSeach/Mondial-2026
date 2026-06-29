@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../i18n/TranslationContext';
+import { useAuth } from '../context/AuthContext';
 import PredictorIcon from './PredictorIcon';
 
 // לוגו המקור לפי הדומיין (favicon גדול דרך שירות גוגל)
@@ -12,6 +14,8 @@ function logoFor(url) {
 // data = { sources, consensus } | undefined ; reviews = [{...}] | undefined
 export default function MatchPredictionButtons({ data, reviews }) {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(null); // {kind:'ai'|'review', i}
   const sources = (data && data.sources) || [];
   const consensus = data && data.consensus;
@@ -95,6 +99,16 @@ export default function MatchPredictionButtons({ data, reviews }) {
             <div className="aipred-type">{t('reviews.member_review')}</div>
             {cur.body && <div className="aipred-pred" style={{ fontWeight: 500, fontSize: 15 }}>{cur.body}</div>}
             {cur.audio_url && <audio controls src={cur.audio_url} style={{ width: '100%', marginTop: 8 }} />}
+            {user && !user.isGuest && cur.user_id !== user.id && (
+              <button
+                type="button"
+                className="btn btn-gold"
+                style={{ width: '100%', justifyContent: 'center', marginTop: 12 }}
+                onClick={() => navigate('/coin-bets', { state: { challenge: { userId: cur.user_id, userName: cur.user_name, matchId: cur.match_id } } })}
+              >
+                ⚔️ {t('reviews.challenge_cta', { name: cur.user_name })}
+              </button>
+            )}
           </div>
         </div>
       )}
