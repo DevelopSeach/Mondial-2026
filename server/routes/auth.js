@@ -213,8 +213,26 @@ router.post('/profile', auth(), upload.single('profile_image'), async (req, res)
       'UPDATE users SET phone_number = ?, preferred_language = ?, profile_image_url = ? WHERE id = ?',
       [phone || null, preferredLanguage, profileImageUrl, req.user.id]
     );
+
+    // בונוס חד-פעמי: הוספת תמונת פרופיל בפעם הראשונה מזכה ב-1000 שיחים
+    let picBonus = 0;
+    if (req.file && !user.profile_image_url && !user.is_guest) {
+      try {
+        const already = await db.one(
+          "SELECT 1 AS x FROM coin_transactions WHERE user_id = ? AND reason = 'profile_pic_bonus' LIMIT 1",
+          [req.user.id]
+        );
+        if (!already) {
+          const { ensureWallet, adjust } = require('../services/coins');
+          await ensureWallet(req.user.id);
+          await db.tx(async (tx) => { await adjust(tx, req.user.id, 1000, 'profile_pic_bonus'); });
+          picBonus = 1000;
+        }
+      } catch (be) { console.error('profile-pic-bonus:', be.message); }
+    }
+
     const updatedUser = await db.one('SELECT * FROM users WHERE id = ?', [req.user.id]);
-    res.json({ ok: true, user: await sanitize(updatedUser) });
+    res.json({ ok: true, user: await sanitize(updatedUser), pic_bonus: picBonus });
   } catch (e) {
     console.error('profile-update:', e);
     const msg = e.code === 'EACCES'

@@ -392,6 +392,7 @@ const translations = {
   'aipred.conf_low': { he: 'נמוכה', en: 'Low', ar: 'منخفضة' },
   'aipred.conf_medium': { he: 'בינונית', en: 'Medium', ar: 'متوسطة' },
   'aipred.conf_high': { he: 'גבוהה', en: 'High', ar: 'عالية' },
+  'reviews.member_review': { he: 'ריביו של חבר אתר', en: 'Member review', ar: 'مراجعة عضو' },
   'coin.challenge_open_title': { he: 'פתוח לאתגרי ניחוש', en: 'Open to challenges', ar: 'متاح للتحديات' },
   'coin.challenge_open_help': { he: 'כשהאפשרות פעילה — משתמשים אחרים יכולים לאתגר אותך לניחוש', en: 'When on, other users can challenge you to a bet', ar: 'عند التفعيل، يمكن للآخرين تحديك' },
   'coin.open_yes': { he: '✓ פתוח', en: '✓ Open', ar: '✓ مفتوح' },

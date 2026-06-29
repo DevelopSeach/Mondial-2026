@@ -57,6 +57,7 @@ export default function Predictions() {
   const [teams, setTeams] = useState([]);
   const [predictions, setPredictions] = useState({});  // matchId -> {home, away, points, locked, saved}
   const [aiPredictions, setAiPredictions] = useState({}); // matchId -> {sources, consensus}
+  const [reviewsByMatch, setReviewsByMatch] = useState({}); // matchId -> [reviews]
   const [special, setSpecial] = useState({ champion_code: '', runner_up_code: '', top_scorer: '' });
   const [specialLocked, setSpecialLocked] = useState(false);
   const [specialLockLabel, setSpecialLockLabel] = useState('');
@@ -110,6 +111,7 @@ export default function Predictions() {
       setSpecialDirty(false);
     });
     api.get('/ai-predictions').then(r => setAiPredictions(r.data || {})).catch(() => {});
+    api.get('/reviews/summary').then(r => setReviewsByMatch(r.data || {})).catch(() => {});
   }, []);
 
   const onChange = (matchId, side, value) => {
@@ -475,7 +477,7 @@ export default function Predictions() {
                       </div>
                     )}
                   </div>
-                  <MatchPredictionButtons data={aiPredictions[m.id]} />
+                  <MatchPredictionButtons data={aiPredictions[m.id]} reviews={reviewsByMatch[m.id]} />
                   {!isGuest && <MatchReviews matchId={m.id} bump={reviewBump[m.id] || 0} />}
                  </div>
                 );

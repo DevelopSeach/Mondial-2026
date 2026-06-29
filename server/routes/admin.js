@@ -1644,7 +1644,7 @@ router.post('/ai-predictions/generate', async (req, res) => {
   try {
     const { generateForNextMatches } = require('../services/aiPredictions');
     const limit = Math.min(Math.max(Number(req.body?.limit) || 5, 1), 10);
-    const result = await generateForNextMatches(limit);
+    const result = await generateForNextMatches(limit, !!req.body?.force);
     res.json(result);
   } catch (e) {
     console.error('admin/ai-predictions:', e);

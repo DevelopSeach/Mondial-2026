@@ -11,8 +11,9 @@ function kickoffIso(raw) {
   return s.endsWith('Z') ? s : `${s.replace(' ', 'T')}Z`;
 }
 
-// 5 המשחקים הקרובים שטרם הסתיימו
+// N המשחקים הקרובים שטרם הסתיימו (LIMIT מוטמע — mysql2 לא תומך ב-placeholder ל-LIMIT)
 async function upcomingMatches(limit) {
+  const n = Math.min(Math.max(parseInt(limit, 10) || 5, 1), 20);
   return db.query(
     `SELECT m.id, m.kickoff, m.home_code, m.away_code,
             COALESCE(th.name_en, m.home_label_en, m.home_code) AS home_en,
@@ -24,8 +25,7 @@ async function upcomingMatches(limit) {
        LEFT JOIN teams ta ON ta.code = m.away_code
       WHERE m.status <> 'finished' AND m.kickoff >= UTC_TIMESTAMP()
       ORDER BY m.kickoff ASC
-      LIMIT ?`,
-    [limit]
+      LIMIT ${n}`
   );
 }
 
@@ -114,9 +114,21 @@ const TYPES = ['exact_score', 'betting_tip', 'probability_model', 'editorial_opi
 const CONF = ['low', 'medium', 'high'];
 
 // מייצר ושומר ניחושי AI ל-N המשחקים הקרובים. מחזיר סיכום.
-async function generateForNextMatches(limit = 5) {
-  const fixtures = await upcomingMatches(limit);
-  if (!fixtures.length) return { ok: true, matches: 0, note: 'no upcoming matches' };
+async function generateForNextMatches(limit = 5, force = false) {
+  const all = await upcomingMatches(limit);
+  if (!all.length) return { ok: true, matches: 0, note: 'no upcoming matches' };
+
+  // דלג על משחקים שכבר יש להם ניחושים (אלא אם force) — לא לבצע fetch מחדש
+  let fixtures = all;
+  if (!force) {
+    const have = await db.query(
+      `SELECT DISTINCT match_id FROM match_ai_predictions WHERE match_id IN (${all.map(() => '?').join(',')})`,
+      all.map(f => f.id)
+    );
+    const haveSet = new Set(have.map(r => r.match_id));
+    fixtures = all.filter(f => !haveSet.has(f.id));
+  }
+  if (!fixtures.length) return { ok: true, matches: 0, skipped: all.length, note: 'all already have predictions' };
 
   const validIds = new Set(fixtures.map(f => f.id));
   const resp = await callOpenAI(buildPrompt(fixtures));

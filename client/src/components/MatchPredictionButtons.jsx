@@ -2,53 +2,70 @@ import { useState } from 'react';
 import { useTranslation } from '../i18n/TranslationContext';
 import PredictorIcon from './PredictorIcon';
 
-// 4 כפתורי ניחוש-AI מתחת לכל משחק. כל כפתור פותח פופאפ עם ניחוש ממקור אחד.
-// data = { sources: [...], consensus: {...} } או undefined (אז הכפתורים מושבתים).
-export default function MatchPredictionButtons({ data }) {
+// לוגו המקור לפי הדומיין (favicon גדול דרך שירות גוגל)
+function logoFor(url) {
+  try { return `https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=64`; }
+  catch { return null; }
+}
+
+// 4 כפתורי ניחוש-AI + אווטארים של ריביוי משתמשים, מתחת לכל משחק.
+// data = { sources, consensus } | undefined ; reviews = [{...}] | undefined
+export default function MatchPredictionButtons({ data, reviews }) {
   const { t } = useTranslation();
-  const [open, setOpen] = useState(null); // אינדקס מקור פתוח
+  const [open, setOpen] = useState(null); // {kind:'ai'|'review', i}
   const sources = (data && data.sources) || [];
   const consensus = data && data.consensus;
+  const revs = reviews || [];
   const slots = [0, 1, 2, 3];
 
   const typeLabel = (ty) => t(`aipred.type_${ty || 'editorial_opinion'}`);
+  const cur = open && (open.kind === 'ai' ? sources[open.i] : revs[open.i]);
 
   return (
     <div className="aipred-bar" dir="rtl">
-      <span className="aipred-bar-label"><PredictorIcon size={15} /> {t('aipred.bar_title')}</span>
+      <span className="aipred-bar-label"><PredictorIcon size={18} /> {t('aipred.bar_title')}</span>
       <div className="aipred-btns">
         {slots.map(i => {
           const s = sources[i];
           if (!s) {
             return (
-              <button key={i} type="button" className="aipred-btn" disabled title={t('aipred.no_data')}>
-                <PredictorIcon size={16} />
+              <button key={i} type="button" className="aipred-chip" disabled title={t('aipred.no_data')}>
+                <PredictorIcon size={26} />
               </button>
             );
           }
+          const logo = logoFor(s.source_url);
           return (
-            <button key={i} type="button" className="aipred-btn active" onClick={() => setOpen(i)} title={s.source_name}>
-              <PredictorIcon size={16} />
-              <span className="aipred-btn-name">{s.source_name}</span>
+            <button key={i} type="button" className="aipred-chip active" onClick={() => setOpen({ kind: 'ai', i })} title={s.source_name}>
+              {logo
+                ? <img className="aipred-logo" src={logo} alt={s.source_name} onError={e => { e.currentTarget.style.display = 'none'; }} />
+                : <PredictorIcon size={26} />}
             </button>
           );
         })}
+
+        {/* ריביוים של חברי האתר — אווטאר המבקר */}
+        {revs.map((r, i) => (
+          <button key={`r${r.id}`} type="button" className="aipred-chip review-chip" onClick={() => setOpen({ kind: 'review', i })} title={r.user_name}>
+            {r.profile_image_url
+              ? <img className="aipred-logo" src={r.profile_image_url} alt={r.user_name} />
+              : <span className="aipred-avatar-fallback">{(r.user_name || '?').slice(0, 1)}</span>}
+          </button>
+        ))}
       </div>
 
-      {open != null && sources[open] && (
+      {cur && open.kind === 'ai' && (
         <div className="aipred-modal-backdrop" onClick={() => setOpen(null)}>
           <div className="aipred-modal" dir="rtl" onClick={e => e.stopPropagation()}>
             <div className="aipred-modal-head">
-              <span><PredictorIcon size={20} /> {sources[open].source_name}</span>
+              <span>{logoFor(cur.source_url) && <img className="aipred-logo sm" src={logoFor(cur.source_url)} alt="" />} {cur.source_name}</span>
               <button className="aipred-x" onClick={() => setOpen(null)}>×</button>
             </div>
-            <div className="aipred-type">{typeLabel(sources[open].prediction_type)}</div>
-            <div className="aipred-pred">{sources[open].prediction || '—'}</div>
-            {sources[open].notes && <div className="aipred-notes">{sources[open].notes}</div>}
-            {sources[open].source_url && (
-              <a className="aipred-link" href={sources[open].source_url} target="_blank" rel="noopener noreferrer">
-                {t('aipred.open_source')} ↗
-              </a>
+            <div className="aipred-type">{typeLabel(cur.prediction_type)}</div>
+            <div className="aipred-pred">{cur.prediction || '—'}</div>
+            {cur.notes && <div className="aipred-notes">{cur.notes}</div>}
+            {cur.source_url && (
+              <a className="aipred-link" href={cur.source_url} target="_blank" rel="noopener noreferrer">{t('aipred.open_source')} ↗</a>
             )}
             {consensus && (consensus.suggested_score || consensus.most_common) && (
               <div className="aipred-consensus">
@@ -58,6 +75,24 @@ export default function MatchPredictionButtons({ data }) {
                 {consensus.explanation && <div className="aipred-expl">{consensus.explanation}</div>}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {cur && open.kind === 'review' && (
+        <div className="aipred-modal-backdrop" onClick={() => setOpen(null)}>
+          <div className="aipred-modal" dir="rtl" onClick={e => e.stopPropagation()}>
+            <div className="aipred-modal-head">
+              <span>
+                {cur.profile_image_url
+                  ? <img className="aipred-logo sm" src={cur.profile_image_url} alt="" />
+                  : null} {cur.user_name}
+              </span>
+              <button className="aipred-x" onClick={() => setOpen(null)}>×</button>
+            </div>
+            <div className="aipred-type">{t('reviews.member_review')}</div>
+            {cur.body && <div className="aipred-pred" style={{ fontWeight: 500, fontSize: 15 }}>{cur.body}</div>}
+            {cur.audio_url && <audio controls src={cur.audio_url} style={{ width: '100%', marginTop: 8 }} />}
           </div>
         </div>
       )}

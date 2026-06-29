@@ -163,6 +163,31 @@ router.get('/match/:id', auth(), async (req, res) => {
   }
 });
 
+// ───────── סיכום ריביוים לכל המשחקים הקרובים (לכפתורי אווטאר בלוח הניחושים) ─────────
+router.get('/summary', auth(), async (req, res) => {
+  try {
+    const rows = await db.query(`
+      SELECT r.id, r.match_id, r.user_id, r.body, r.audio_url, r.transcript, r.created_at,
+             u.name AS user_name, u.profile_image_url,
+             (SELECT COUNT(*) FROM review_votes v WHERE v.review_id = r.id) AS vote_count
+      FROM match_reviews r
+      JOIN users u ON u.id = r.user_id
+      JOIN matches m ON m.id = r.match_id
+      WHERE r.status = 'published' AND m.status <> 'finished'
+      ORDER BY r.match_id, vote_count DESC, r.created_at DESC
+    `);
+    const byMatch = {};
+    for (const r of rows) {
+      r.vote_count = Number(r.vote_count);
+      (byMatch[r.match_id] = byMatch[r.match_id] || []).push(r);
+    }
+    res.json(byMatch);
+  } catch (e) {
+    console.error('reviews/summary:', e);
+    res.status(500).json({ error: 'שגיאת שרת' });
+  }
+});
+
 // ───────── הריביוים שלי ─────────
 router.get('/mine', auth(), async (req, res) => {
   try {
