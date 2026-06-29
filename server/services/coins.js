@@ -113,8 +113,8 @@ async function settleReviewReward(review) {
   );
   const correct = !!pred && pred.home_score === match.home_score && pred.away_score === match.away_score;
 
-  const perVote = await getSettingNum('review_coins_per_vote', 50);
-  const multiplier = await getSettingNum('review_correct_multiplier', 5);
+  const perVote = await getSettingNum('review_coins_per_vote', 10);
+  const multiplier = await getSettingNum('review_correct_multiplier', 2);
   const target = votes * perVote * (correct ? multiplier : 1);
   const delta = target - Number(review.coins_awarded || 0);
   if (delta === 0) return;
