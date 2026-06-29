@@ -3,6 +3,7 @@ import api, { errMsg } from '../api/client';
 import Flag from './Flag';
 import { useTranslation } from '../i18n/TranslationContext';
 import { ilDate } from '../utils/time';
+import CoinIcon from './CoinIcon';
 
 // כרטיס "הריביוים שלי" בעמוד הפרופיל — האזנה, עריכת טקסט ומחיקה
 export default function MyReviews() {
@@ -94,7 +95,7 @@ export default function MyReviews() {
                 <div className="review-vote-row">
                   <span className="review-vote-count">👂 {rev.vote_count || 0} {t('reviews.votes')}</span>
                   {rev.coins_awarded > 0 && (
-                    <span className="review-coins-earned">🪙 {Number(rev.coins_awarded).toLocaleString()} {t('reviews.coins_earned')}</span>
+                    <span className="review-coins-earned"><CoinIcon size={15} /> {Number(rev.coins_awarded).toLocaleString()} {t('reviews.coins_earned')}</span>
                   )}
                 </div>
                 <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>

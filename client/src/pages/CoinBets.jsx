@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import api, { errMsg } from '../api/client';
 import Flag from '../components/Flag';
 import { CoinBadge } from '../components/CoinBadges';
+import CoinIcon from '../components/CoinIcon';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from '../i18n/TranslationContext';
 import { ilDate, ilTime, ilMs } from '../utils/time';
@@ -52,7 +53,7 @@ export default function CoinBets() {
 
       <div className="coin-wallet-banner">
         <span className="coin-wallet-label">{t('coin.balance')}</span>
-        <span className="coin-wallet-value">🪙 {wallet ? wallet.balance.toLocaleString() : '—'}</span>
+        <span className="coin-wallet-value"><CoinIcon size={15} /> {wallet ? wallet.balance.toLocaleString() : '—'}</span>
       </div>
 
       {err && <div className="alert alert-error">{err}</div>}
@@ -112,11 +113,11 @@ function OpenBoard({ open, propLabel, onAccept, locale, t }) {
                 <span className="coin-prop"> {t('coin.backs')} <strong>{propLabel(m, b.proposition)}</strong></span>
                 {b.target_user_id && <span className="coin-challenge-tag"> {t('coin.direct_challenge')}</span>}
               </div>
-              <div className="coin-stake">🪙 {b.stake.toLocaleString()}</div>
+              <div className="coin-stake"><CoinIcon size={15} /> {b.stake.toLocaleString()}</div>
             </div>
             <div className="coin-card-foot">
               <span className="coin-you-take">{t('coin.you_take')}: <strong>{t('coin.not_x', { x: propLabel(m, b.proposition) })}</strong></span>
-              <button className="btn btn-sm btn-gold" onClick={() => onAccept(b)}>{t('coin.accept')} (🪙 {b.stake.toLocaleString()})</button>
+              <button className="btn btn-sm btn-gold" onClick={() => onAccept(b)}>{t('coin.accept')} (<CoinIcon size={15} /> {b.stake.toLocaleString()})</button>
             </div>
           </div>
         );
@@ -152,12 +153,12 @@ function MyBets({ mine, matchById, propLabel, userId, onCancel, locale, t }) {
                     : (b.target_name ? t('coin.waiting_for', { name: b.target_name }) : t('coin.waiting_open'))}
                 </div>
               </div>
-              <div className="coin-stake">🪙 {b.stake.toLocaleString()}</div>
+              <div className="coin-stake"><CoinIcon size={15} /> {b.stake.toLocaleString()}</div>
             </div>
             <div className="coin-card-foot">
               <span className={`coin-status coin-status-${b.status}`}>{statusLabel[b.status]}</span>
-              {won && <span className="coin-result-win">+{(b.stake * 2).toLocaleString()} 🪙</span>}
-              {lost && <span className="coin-result-lose">−{b.stake.toLocaleString()} 🪙</span>}
+              {won && <span className="coin-result-win">+{(b.stake * 2).toLocaleString()} <CoinIcon size={15} /></span>}
+              {lost && <span className="coin-result-lose">−{b.stake.toLocaleString()} <CoinIcon size={15} /></span>}
               {b.status === 'open' && iAmCreator && (
                 <button className="btn btn-sm btn-outline" onClick={() => onCancel(b)}>{t('coin.cancel')}</button>
               )}
@@ -242,7 +243,7 @@ function CreateBet({ matches, propLabel, wallet, onCreated, locale, t }) {
       )}
 
       <div className="field">
-        <label>{t('coin.stake')} {wallet && <span style={{ color: 'var(--muted)', fontWeight: 400 }}>({t('coin.balance')}: 🪙 {wallet.balance.toLocaleString()})</span>}</label>
+        <label>{t('coin.stake')} {wallet && <span style={{ color: 'var(--muted)', fontWeight: 400 }}>({t('coin.balance')}: <CoinIcon size={15} /> {wallet.balance.toLocaleString()})</span>}</label>
         <input type="number" min="1" value={stake} onChange={e => setStake(e.target.value)} />
       </div>
 
@@ -289,7 +290,7 @@ function CoinLeaderboard({ board, userId, t }) {
           <tr key={r.id} className={r.id === userId ? 'me-row' : ''}>
             <td className={`rank-medal top-${r.rank}`}>{r.rank}</td>
             <td>{r.name}</td>
-            <td>🪙 {r.balance.toLocaleString()}</td>
+            <td><CoinIcon size={15} /> {r.balance.toLocaleString()}</td>
             <td>{r.bets_won}/{r.bets_settled} {r.bets_settled > 0 && <span style={{ color: 'var(--muted)' }}>({r.win_rate}%)</span>}</td>
             <td><CoinBadge rank={r.rank} winRate={r.win_rate} betsWon={r.bets_won} /></td>
           </tr>

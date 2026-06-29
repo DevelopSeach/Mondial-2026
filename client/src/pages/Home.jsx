@@ -4,6 +4,7 @@ import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import Flag from '../components/Flag';
 import MatchCard from '../components/MatchCard';
+import CoinIcon from '../components/CoinIcon';
 import ScoreText from '../components/ScoreText';
 import { useTranslation } from '../i18n/TranslationContext';
 import { ilMs } from '../utils/time';
@@ -115,7 +116,7 @@ export default function Home() {
         {coinBalance != null && (
           <Link to="/coin-bets" className="stat-card" style={{ textDecoration: 'none' }}>
             <div className="label">{t('coin.balance')}</div>
-            <div className="value" style={{color:'var(--gold)'}}>🪙 {coinBalance.toLocaleString()}</div>
+            <div className="value" style={{color:'var(--gold)'}}><CoinIcon size={15} /> {coinBalance.toLocaleString()}</div>
           </Link>
         )}
       </div>

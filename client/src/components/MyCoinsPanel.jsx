@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import CoinIcon from './CoinIcon';
 import { useTranslation } from '../i18n/TranslationContext';
 import { ilDate } from '../utils/time';
 
@@ -41,7 +42,7 @@ export default function MyCoinsPanel() {
       <div className="my-coins-stats">
         <div className="stat-card">
           <div className="label">{t('coin.balance')}</div>
-          <div className="value" style={{ color: 'var(--gold)' }}>🪙 {wallet ? wallet.balance.toLocaleString() : '—'}</div>
+          <div className="value" style={{ color: 'var(--gold)' }}><CoinIcon size={15} /> {wallet ? wallet.balance.toLocaleString() : '—'}</div>
         </div>
         <div className="stat-card">
           <div className="label">{t('coin.rank')}</div>
@@ -75,14 +76,14 @@ export default function MyCoinsPanel() {
                 </div>
                 <div className="coin-card-body">
                   <span>{t('coin.you_back')} <strong>{propLabel(b)}</strong></span>
-                  <span className="coin-stake">🪙 {b.stake.toLocaleString()}</span>
+                  <span className="coin-stake"><CoinIcon size={15} /> {b.stake.toLocaleString()}</span>
                 </div>
                 <div className="coin-card-foot">
                   <span className={`coin-status coin-status-${b.status}`}>{statusLabel[b.status]}</span>
                   {b.status === 'settled' && b.winner_id && (
                     won
-                      ? <span className="coin-result-win">+{(b.stake * 2).toLocaleString()} 🪙</span>
-                      : <span className="coin-result-lose">−{b.stake.toLocaleString()} 🪙</span>
+                      ? <span className="coin-result-win">+{(b.stake * 2).toLocaleString()} <CoinIcon size={15} /></span>
+                      : <span className="coin-result-lose">−{b.stake.toLocaleString()} <CoinIcon size={15} /></span>
                   )}
                 </div>
               </div>
