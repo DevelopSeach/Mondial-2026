@@ -2036,3 +2036,15 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
 .my-coins-teams { font-weight: 700; color: var(--ink); }
 .coin-type-chip { font-size: 11px; background: var(--ink); color: var(--paper); padding: 2px 8px; border-radius: 999px; }
 @media (max-width: 600px) { .my-coins-stats { grid-template-columns: repeat(2, 1fr); } }
+
+/* שם המותג בכותרת */
+.header-brand-name {
+  font-family: var(--font-display, inherit);
+  font-weight: 800;
+  font-size: 20px;
+  color: var(--gold);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  margin-inline-end: 4px;
+}
+@media (max-width: 600px) { .header-brand-name { font-size: 16px; } }

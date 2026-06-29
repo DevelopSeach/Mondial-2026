@@ -22,6 +22,7 @@ export default function Header() {
         </div>
 
         <div className="header-right-brand">
+          <span className="header-brand-name">שיח-מרקט</span>
           <img className="header-logo-large" src={assets.logo || '/shiah-logo-white.png'} alt="logo" />
           {user?.profile_image_url ? (
             <img className="header-avatar" src={user.profile_image_url} alt={user.name} />
