@@ -365,6 +365,12 @@ const translations = {
   'coin.not_enough': { he: 'אין מספיק מטבעות', en: 'Not enough coins', ar: 'لا توجد عملات كافية' },
   'coin.badge_richest': { he: 'הכי עשיר', en: 'Richest', ar: 'الأغنى' },
   'coin.badge_sharp': { he: 'מהמר חד', en: 'Sharp Bettor', ar: 'مراهن بارع' },
+  'coin.my_coins_title': { he: 'השיחים וההימורים שלי', en: 'My Coins & Bets', ar: 'عملاتي ورهاناتي' },
+  'coin.go_bet': { he: 'לאזור ההימורים', en: 'Go to betting', ar: 'إلى الرهانات' },
+  'coin.rank': { he: 'דירוג', en: 'Rank', ar: 'الترتيب' },
+  'coin.win_rate': { he: 'אחוז הצלחה', en: 'Win rate', ar: 'نسبة الفوز' },
+  'coin.all_bets': { he: 'כל ההימורים שלי', en: 'All my bets', ar: 'كل رهاناتي' },
+  'coin.market_result': { he: 'תוצאת משחק (1·X·2)', en: 'Match result (1·X·2)', ar: 'نتيجة المباراة (1·X·2)' },
 
   // ────────── סטטיסטיקות פרופיל + באנר ──────────
   'profile.stats_title': { he: 'הסטטיסטיקות שלי', en: 'My Statistics', ar: 'إحصائياتي' },

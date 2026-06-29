@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTranslation } from '../i18n/TranslationContext';
 import { UserGroupBadges } from '../components/GroupBadges';
 import MyReviews from '../components/MyReviews';
+import MyCoinsPanel from '../components/MyCoinsPanel';
 
 export default function Profile() {
   const { user, updateProfile } = useAuth();
@@ -211,6 +212,8 @@ export default function Profile() {
           </button>
         </form>
       </div>
+
+      {!user?.isGuest && <MyCoinsPanel />}
 
       <MyReviews />
 
