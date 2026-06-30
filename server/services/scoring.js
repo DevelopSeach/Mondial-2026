@@ -347,7 +347,20 @@ const DEFAULT_BADGE_CONFIG = {
     prophet:       { enabled: true, emoji: '⭐' }
   },
   // min_points: רף נקודות מינימלי כדי לקבל תגים בכלל (תגים מוענקים רק למי שמעל הסף)
-  thresholds: { centurion_points: 100, min_predictions: 5, min_streak: 2, min_points: 13 }
+  thresholds: { centurion_points: 100, min_predictions: 5, min_streak: 2, min_points: 13 },
+  // 10 תגי "שיחים" — ניתנים לעריכה (אימוג'י/שם/סף/הפעלה). metric: rank|win_rate|balance|bets_settled|bets_won
+  coin_badges: {
+    richest:     { enabled: true, emoji: '💰',  label: 'העשיר בשיחים', metric: 'rank',         threshold: 1 },
+    silver:      { enabled: true, emoji: '🥈',  label: 'מקום שני',      metric: 'rank',         threshold: 2 },
+    bronze:      { enabled: true, emoji: '🥉',  label: 'מקום שלישי',    metric: 'rank',         threshold: 3 },
+    sharp:       { enabled: true, emoji: '🎯',  label: 'מנחש חד',       metric: 'win_rate',     threshold: 70 },
+    high_roller: { enabled: true, emoji: '🤑',  label: 'שחקן גדול',     metric: 'balance',      threshold: 15000 },
+    whale:       { enabled: true, emoji: '🐋',  label: 'לוויתן',        metric: 'balance',      threshold: 20000 },
+    veteran:     { enabled: true, emoji: '🎖️',  label: 'ותיק',          metric: 'bets_settled', threshold: 10 },
+    winner:      { enabled: true, emoji: '🏅',  label: 'מנצח סדרתי',    metric: 'bets_won',     threshold: 5 },
+    champion:    { enabled: true, emoji: '🏆',  label: 'אלוף השיחים',   metric: 'bets_won',     threshold: 10 },
+    active:      { enabled: true, emoji: '⚡',  label: 'פעלתן',         metric: 'bets_settled', threshold: 3 }
+  }
 };
 
 async function loadBadgeConfig() {
@@ -356,8 +369,9 @@ async function loadBadgeConfig() {
   try {
     const parsed = JSON.parse(raw);
     return {
-      badges:     { ...DEFAULT_BADGE_CONFIG.badges,     ...(parsed.badges || {}) },
-      thresholds: { ...DEFAULT_BADGE_CONFIG.thresholds, ...(parsed.thresholds || {}) }
+      badges:      { ...DEFAULT_BADGE_CONFIG.badges,      ...(parsed.badges || {}) },
+      thresholds:  { ...DEFAULT_BADGE_CONFIG.thresholds,  ...(parsed.thresholds || {}) },
+      coin_badges: { ...DEFAULT_BADGE_CONFIG.coin_badges, ...(parsed.coin_badges || {}) }
     };
   } catch {
     return DEFAULT_BADGE_CONFIG;

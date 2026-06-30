@@ -1810,7 +1810,8 @@ router.delete('/special-popups/:id', async (req, res) => {
 router.get('/badges', async (req, res) => {
   try {
     const config = await loadBadgeConfig();
-    res.json({ config, defaults: DEFAULT_BADGE_CONFIG, ids: Object.keys(DEFAULT_BADGE_CONFIG.badges) });
+    res.json({ config, defaults: DEFAULT_BADGE_CONFIG, ids: Object.keys(DEFAULT_BADGE_CONFIG.badges),
+      coin_badge_ids: Object.keys(DEFAULT_BADGE_CONFIG.coin_badges || {}) });
   } catch (e) {
     console.error('admin/badges/get:', e);
     res.status(500).json({ error: 'שגיאת שרת' });
@@ -1834,6 +1835,20 @@ router.post('/badges', async (req, res) => {
     for (const k of Object.keys(DEFAULT_BADGE_CONFIG.thresholds)) {
       const n = Number(th[k]);
       if (Number.isFinite(n) && n >= 0) merged.thresholds[k] = Math.trunc(n);
+    }
+    // תגי שיחים — מיזוג בטוח (emoji/label/threshold/enabled; metric נשמר מברירת המחדל)
+    merged.coin_badges = {};
+    for (const id of Object.keys(DEFAULT_BADGE_CONFIG.coin_badges || {})) {
+      const d = DEFAULT_BADGE_CONFIG.coin_badges[id];
+      const inc = (incoming.coin_badges || {})[id] || {};
+      const thr = Number(inc.threshold);
+      merged.coin_badges[id] = {
+        enabled: inc.enabled === undefined ? d.enabled : !!inc.enabled,
+        emoji: (typeof inc.emoji === 'string' && inc.emoji.trim()) ? inc.emoji.trim().slice(0, 8) : d.emoji,
+        label: (typeof inc.label === 'string' && inc.label.trim()) ? inc.label.trim().slice(0, 40) : d.label,
+        metric: d.metric,
+        threshold: Number.isFinite(thr) && thr >= 0 ? Math.trunc(thr) : d.threshold
+      };
     }
     await db.run(
       'INSERT INTO settings (`key`, `value`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)',

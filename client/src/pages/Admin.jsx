@@ -1873,6 +1873,7 @@ function NumField({ label, value, onChange, min, max, step = '1' }) {
 function BadgesTab() {
   const { t } = useTranslation();
   const [ids, setIds] = useState([]);
+  const [coinIds, setCoinIds] = useState([]);
   const [config, setConfig] = useState(null);
   const [saved, setSaved] = useState(null);
   const [err, setErr] = useState('');
@@ -1881,7 +1882,7 @@ function BadgesTab() {
 
   const load = () => {
     api.get('/admin/badges')
-      .then(r => { setIds(r.data.ids || []); setConfig(r.data.config); setSaved(JSON.stringify(r.data.config)); })
+      .then(r => { setIds(r.data.ids || []); setCoinIds(r.data.coin_badge_ids || []); setConfig(r.data.config); setSaved(JSON.stringify(r.data.config)); })
       .catch(e => setErr(errMsg(e)));
   };
   useEffect(() => { load(); }, []);
@@ -1892,6 +1893,9 @@ function BadgesTab() {
     setConfig(c => ({ ...c, badges: { ...c.badges, [id]: { ...c.badges[id], [key]: value } } }));
   const updThreshold = (key, value) =>
     setConfig(c => ({ ...c, thresholds: { ...c.thresholds, [key]: value } }));
+  const updCoinBadge = (id, key, value) =>
+    setConfig(c => ({ ...c, coin_badges: { ...c.coin_badges, [id]: { ...(c.coin_badges || {})[id], [key]: value } } }));
+  const metricLabel = { rank: 'דירוג =', win_rate: 'אחוז ניצחון ≥', balance: 'יתרת שיחים ≥', bets_settled: 'ניחושים שיושבו ≥', bets_won: 'ניחושים שזכו ≥' };
 
   const save = async () => {
     setErr(''); setOk(''); setBusy(true);
@@ -1952,6 +1956,31 @@ function BadgesTab() {
             onChange={v => updThreshold('min_streak', v)} />
           <NumField label="מינימום נקודות לקבלת תגים" value={config.thresholds.min_points}
             onChange={v => updThreshold('min_points', v)} />
+        </div>
+      </SettingsCard>
+
+      <SettingsCard title="תגי שיחים (10 הישגי מטבעות)">
+        <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 0 }}>אימוג'י, שם וסף לכל תג. התג מוענק אוטומטית בלוח מצטייני השיחים.</p>
+        <div className="badge-admin-list">
+          {coinIds.map(id => {
+            const b = (config.coin_badges || {})[id] || {};
+            return (
+              <div key={id} className={`badge-admin-row ${b.enabled ? '' : 'disabled'}`}>
+                <span className="badge-admin-emoji-preview">{b.emoji}</span>
+                <input className="badge-admin-emoji-input" value={b.emoji || ''} maxLength={8}
+                  onChange={e => updCoinBadge(id, 'emoji', e.target.value)} aria-label="emoji" />
+                <input style={{ flex: 1, minWidth: 100 }} value={b.label || ''}
+                  onChange={e => updCoinBadge(id, 'label', e.target.value)} aria-label="label" />
+                <span style={{ color: 'var(--muted)', fontSize: 12, whiteSpace: 'nowrap' }}>{metricLabel[b.metric] || b.metric}</span>
+                <input type="number" min="0" style={{ width: 90 }} value={b.threshold ?? 0}
+                  onChange={e => updCoinBadge(id, 'threshold', Number(e.target.value))} aria-label="threshold" />
+                <label className="badge-admin-toggle">
+                  <input type="checkbox" checked={!!b.enabled} onChange={e => updCoinBadge(id, 'enabled', e.target.checked)} />
+                  <span>{b.enabled ? t('admin.badge_on') : t('admin.badge_off')}</span>
+                </label>
+              </div>
+            );
+          })}
         </div>
       </SettingsCard>
 

@@ -185,7 +185,31 @@ async function coinLeaderboard() {
     if (r.balance !== lastBal) { lastRank = i + 1; lastBal = r.balance; }
     r.rank = lastRank;
   });
+
+  // תגי שיחים לפי הקונפיגורציה (ניתנת לעריכה בלוח הניהול)
+  try {
+    const { loadBadgeConfig } = require('./scoring'); // lazy — נמנע מתלות מעגלית
+    const defs = (await loadBadgeConfig()).coin_badges || {};
+    rows.forEach(r => {
+      r.coin_badges = Object.values(defs)
+        .filter(d => d && d.enabled && evalCoinBadge(d, r))
+        .map(d => ({ emoji: d.emoji, label: d.label }));
+    });
+  } catch { rows.forEach(r => { r.coin_badges = []; }); }
+
   return rows;
+}
+
+function evalCoinBadge(def, row) {
+  const th = Number(def.threshold);
+  switch (def.metric) {
+    case 'rank':         return Number(row.rank) === th;
+    case 'win_rate':     return Number(row.bets_settled) >= 3 && Number(row.win_rate) >= th;
+    case 'balance':      return Number(row.balance) >= th;
+    case 'bets_settled': return Number(row.bets_settled) >= th;
+    case 'bets_won':     return Number(row.bets_won) >= th;
+    default:             return false;
+  }
 }
 
 // קובע אם המשתמש גלוי לאתגרי ניחוש

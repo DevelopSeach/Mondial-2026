@@ -375,7 +375,7 @@ function CoinLeaderboard({ board, userId, t }) {
             <td>{r.name}</td>
             <td><CoinIcon size={15} /> {r.balance.toLocaleString()}</td>
             <td>{r.bets_won}/{r.bets_settled} {r.bets_settled > 0 && <span style={{ color: 'var(--muted)' }}>({r.win_rate}%)</span>}</td>
-            <td><CoinBadge rank={r.rank} winRate={r.win_rate} betsWon={r.bets_won} /></td>
+            <td><CoinBadge badges={r.coin_badges} /></td>
           </tr>
         ))}
       </tbody>
