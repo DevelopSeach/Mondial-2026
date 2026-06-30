@@ -354,6 +354,7 @@ async function buildReviews(persona, matches) {
 async function loadMatches() {
   return db.query(`
     SELECT m.id, m.status, m.kickoff,
+           (m.home_code IS NOT NULL AND m.away_code IS NOT NULL) AS real_teams,
            COALESCE(ht.name_he, m.home_label_he, m.home_code, 'בית') AS home,
            COALESCE(at.name_he, m.away_label_he, m.away_code, 'חוץ') AS away
     FROM matches m
@@ -442,10 +443,11 @@ async function createOne(strategy, options) {
     }
   }
 
-  // ריביוים — 4-5 משחקים (עדיפות למשחקים שלא הסתיימו)
+  // ריביוים — 4-5 משחקים, רק עם נבחרות אמיתיות (לא משחקי placeholder של נוקאאוט)
   if (options.reviews !== false && matches.length) {
-    const pool = matches.filter(m => m.status !== 'finished');
-    const src = (pool.length >= 5 ? pool : matches).slice();
+    const realMatches = matches.filter(m => Number(m.real_teams));
+    const pool = realMatches.filter(m => m.status !== 'finished');
+    const src = (pool.length >= 5 ? pool : realMatches).slice();
     const chosen = [];
     const want = 4 + rnd(2); // 4-5
     while (chosen.length < want && src.length) chosen.push(src.splice(rnd(src.length), 1)[0]);
@@ -745,7 +747,8 @@ async function organicRebet(bot, lockH) {
 async function organicReview(bot) {
   const m = await db.one(`SELECT m.id, COALESCE(ht.name_he, m.home_label_he, m.home_code) AS home, COALESCE(at.name_he, m.away_label_he, m.away_code) AS away
     FROM matches m LEFT JOIN teams ht ON ht.code=m.home_code LEFT JOIN teams at ON at.code=m.away_code
-    WHERE m.status <> 'finished' AND NOT EXISTS (SELECT 1 FROM match_reviews r WHERE r.match_id=m.id AND r.user_id=?)
+    WHERE m.status <> 'finished' AND m.home_code IS NOT NULL AND m.away_code IS NOT NULL
+      AND NOT EXISTS (SELECT 1 FROM match_reviews r WHERE r.match_id=m.id AND r.user_id=?)
     ORDER BY RAND() LIMIT 1`, [bot.user_id]);
   if (!m) return 0;
   await db.run(
