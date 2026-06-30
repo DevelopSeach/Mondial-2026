@@ -453,7 +453,7 @@ export default function Predictions() {
                     </div>
 
                     <div className="scores-col">
-                      {!isGuest && (
+                      {!isGuest && user?.publishPrediction !== false && (
                         <MatchReviewRecorder
                           matchId={m.id}
                           disabled={locked || finished}

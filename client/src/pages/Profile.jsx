@@ -21,6 +21,7 @@ export default function Profile() {
   const [profilePreviewUrl, setProfilePreviewUrl] = useState('');
   const [phoneDraft, setPhoneDraft] = useState(user?.phone_number || '');
   const [languageDraft, setLanguageDraft] = useState(user?.preferred_language || language);
+  const [publishDraft, setPublishDraft] = useState(user?.publishPrediction !== false);
   const [profileMsg, setProfileMsg] = useState('');
   const [err, setErr] = useState('');
   const [ok, setOk] = useState('');
@@ -79,7 +80,7 @@ export default function Profile() {
     setProfileMsg('');
     setProfileBusy(true);
     try {
-      const res = await updateProfile({ profile_image_file: profileImageFile, phone_number: phoneDraft, preferred_language: languageDraft });
+      const res = await updateProfile({ profile_image_file: profileImageFile, phone_number: phoneDraft, preferred_language: languageDraft, publish_prediction: publishDraft });
       setProfileMsg(res?.pic_bonus ? t('profile.pic_bonus_granted') : t('profile.saved'));
       setProfileImageFile(null);
     } catch (e) {
@@ -148,6 +149,13 @@ export default function Profile() {
               <option value="ar">{t('common.language_ar')}</option>
               <option value="en">{t('common.language_en')}</option>
             </select>
+          </div>
+
+          <div className="field" style={{maxWidth: 420}}>
+            <label className="review-attach" style={{ cursor: 'pointer' }}>
+              <input type="checkbox" checked={publishDraft} onChange={(e) => setPublishDraft(e.target.checked)} />
+              <span>{t('profile.publish_prediction')}</span>
+            </label>
           </div>
 
           <div className="field" style={{maxWidth: 420}}>

@@ -2137,4 +2137,7 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
 .review-challenge-btn:hover { background: var(--gold, #e6b54a); color: #3a2a05; }
 .pic-bonus-note { margin-top: 6px; color: var(--gold-deep, #b8860b); font-weight: 700; font-size: 13px; }
 .coin-slots { font-size: 12px; font-weight: 700; color: var(--gold-deep, #b8860b); margin: 2px 0 6px; }
+.source-link { display: inline-flex; align-items: center; vertical-align: middle; }
+.source-link img { border-radius: 4px; }
+.aipred-link-row { display: flex; align-items: center; gap: 6px; margin-top: 8px; color: #6b4e9a; font-weight: 700; font-size: 13px; }
 .coin-pick-preview { margin-top: 8px; font-size: 14px; color: var(--pitch, #2a7); background: rgba(42,170,119,.08); padding: 6px 10px; border-radius: 8px; }

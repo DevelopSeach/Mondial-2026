@@ -78,6 +78,7 @@ async function sanitize(user) {
     role: user.is_admin ? 'admin' : (user.role || 'user'),
     isGuest: !!user.is_guest,
     canGuessGroups: siteGuessGroupsEnabled && (!!user.is_admin || !!user.can_guess_groups),
+    publishPrediction: user.publish_prediction == null ? true : !!user.publish_prediction,
     createdAt: user.created_at
   };
 }
@@ -181,6 +182,12 @@ router.post('/profile', auth(), upload.single('profile_image'), async (req, res)
     const preferredLanguage = normalizeLanguage(req.body?.preferred_language);
     const user = await db.one('SELECT * FROM users WHERE id = ?', [req.user.id]);
     if (!user) return res.status(404).json({ error: 'משתמש לא נמצא' });
+
+    // העדפת "פרסם תחזית" (אם נשלחה)
+    if (req.body?.publish_prediction !== undefined) {
+      await db.run('UPDATE users SET publish_prediction = ? WHERE id = ?',
+        [req.body.publish_prediction ? 1 : 0, req.user.id]);
+    }
 
     let profileImageUrl = user.profile_image_url || null;
     if (req.file) {

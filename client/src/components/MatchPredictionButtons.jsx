@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../i18n/TranslationContext';
 import { useAuth } from '../context/AuthContext';
 import PredictorIcon from './PredictorIcon';
+import SourceLink from './SourceLink';
 
 // לוגו המקור לפי הדומיין (favicon גדול דרך שירות גוגל)
 function logoFor(url) {
@@ -71,7 +72,7 @@ export default function MatchPredictionButtons({ data, reviews }) {
             <div className="aipred-pred">{cur.prediction || '—'}</div>
             {cur.notes && <div className="aipred-notes">{cur.notes}</div>}
             {cur.source_url && (
-              <a className="aipred-link" href={cur.source_url} target="_blank" rel="noopener noreferrer">{t('aipred.open_source')} ↗</a>
+              <div className="aipred-link-row">{t('aipred.open_source')} <SourceLink url={cur.source_url} size={20} label={cur.source_name} /></div>
             )}
             {consensus && (consensus.suggested_score || consensus.most_common) && (
               <div className="aipred-consensus">

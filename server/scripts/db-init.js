@@ -149,6 +149,10 @@ async function main() {
   await addColumnIfMissing('coin_wallets', 'challenge_open',
     'ALTER TABLE coin_wallets ADD COLUMN challenge_open TINYINT(1) NOT NULL DEFAULT 0 AFTER balance');
 
+  // העדפת משתמש: האם להציג את כפתור "פרסם את התחזית שלך" (ברירת מחדל: כן)
+  await addColumnIfMissing('users', 'publish_prediction',
+    'ALTER TABLE users ADD COLUMN publish_prediction TINYINT(1) NOT NULL DEFAULT 1 AFTER profile_image_url');
+
   // הימור רב-מקבלים: סכום מוכפל במספר המקבלים
   await addColumnIfMissing('coin_bets', 'max_acceptors',
     'ALTER TABLE coin_bets ADD COLUMN max_acceptors INT NOT NULL DEFAULT 1 AFTER target_user_id');

@@ -163,6 +163,7 @@ const translations = {
   'profile.password_mismatch': { he: 'הסיסמה החדשה ואישור הסיסמה אינם תואמים', en: 'The new password and confirmation do not match', ar: 'كلمة المرور الجديدة والتأكيد غير متطابقين' },
   'profile.password_saved': { he: 'הסיסמה עודכנה בהצלחה', en: 'Password updated successfully', ar: 'تم تحديث كلمة المرور بنجاح' },
   'profile.saved': { he: 'פרטי הפרופיל נשמרו', en: 'Profile details saved', ar: 'تم حفظ تفاصيل الملف الشخصي' },
+  'profile.publish_prediction': { he: 'פרסם תחזית (הצג את כפתור "פרסם את התחזית שלך")', en: 'Publish prediction (show the "Publish your prediction" button)', ar: 'انشر التوقع (إظهار زر النشر)' },
   'profile.pic_bonus_note': { he: 'הוספת תמונת פרופיל בפעם הראשונה מזכה אותך ב-1000 שיחים!', en: 'Adding a profile picture for the first time grants you 1000 coins!', ar: 'إضافة صورة الملف الشخصي لأول مرة تمنحك 1000 عملة!' },
   'profile.pic_bonus_granted': { he: '🎁 פרטי הפרופיל נשמרו — קיבלת 1000 שיחים על תמונת הפרופיל!', en: '🎁 Saved — you earned 1000 coins for your profile picture!', ar: '🎁 تم الحفظ — حصلت على 1000 عملة لصورتك!' },
   'profile.save_error': { he: 'שגיאה בשמירת פרופיל', en: 'Profile save failed', ar: 'فشل حفظ الملف الشخصي' },
@@ -327,7 +328,7 @@ const translations = {
   'gg.net_from_group': { he: 'רווח נטו מהקבוצה', en: 'Net from group', ar: 'صافي من المجموعة' },
 
   // ────────── ניחושי מטבעות ("שיחים") ──────────
-  'nav.coin_betting': { he: 'שיחים', en: 'Coins', ar: 'عملات' },
+  'nav.coin_betting': { he: '💰 שיחים', en: '💰 Coins', ar: '💰 عملات' },
   'coin.title': { he: 'ניחושי שיחים', en: 'Coin Bets', ar: 'رهانات العملات' },
   'coin.subtitle': { he: 'נחשו זה מול זה על תוצאות משחקים. כל מנצח לוקח את הקופה.', en: 'Bet head-to-head on match results. Winner takes the pot.', ar: 'راهن وجهًا لوجه على نتائج المباريات. الفائز يأخذ المجموع.' },
   'coin.balance': { he: 'יתרת שיחים', en: 'Coin Balance', ar: 'رصيد العملات' },

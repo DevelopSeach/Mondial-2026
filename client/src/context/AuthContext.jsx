@@ -75,10 +75,11 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
-  const updateProfile = async ({ phone_number, profile_image_file, preferred_language }) => {
+  const updateProfile = async ({ phone_number, profile_image_file, preferred_language, publish_prediction }) => {
     const form = new FormData();
     form.append('phone_number', phone_number || '');
     if (preferred_language) form.append('preferred_language', preferred_language);
+    if (publish_prediction !== undefined) form.append('publish_prediction', publish_prediction ? '1' : '0');
     if (profile_image_file) form.append('profile_image', profile_image_file);
     const { data } = await api.post('/auth/profile', form);
     if (data?.user) setUser(data.user);

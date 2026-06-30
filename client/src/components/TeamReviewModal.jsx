@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../api/client';
 import { useTranslation } from '../i18n/TranslationContext';
 import Flag from './Flag';
+import SourceLink from './SourceLink';
 
 const CONF = { low: 'נמוכה', medium: 'בינונית', high: 'גבוהה' };
 
@@ -74,7 +75,10 @@ export default function TeamReviewModal({ code, onClose }) {
                   <div key={i} className="teamrev-source">
                     <span className="teamrev-source-icon">{s.source_icon || '📰'}</span>
                     <div>
-                      <a href={s.url} target="_blank" rel="noopener noreferrer"><b>{s.reviewer_label || s.source_name}</b></a>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <b>{s.reviewer_label || s.source_name}</b>
+                        <SourceLink url={s.url} size={16} label={s.source_name} />
+                      </div>
                       {s.main_point && <div className="teamrev-source-point">{s.main_point}</div>}
                     </div>
                   </div>

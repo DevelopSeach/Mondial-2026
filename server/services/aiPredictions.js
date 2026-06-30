@@ -13,7 +13,7 @@ function kickoffIso(raw) {
 
 // N המשחקים הקרובים שטרם הסתיימו (LIMIT מוטמע — mysql2 לא תומך ב-placeholder ל-LIMIT)
 async function upcomingMatches(limit) {
-  const n = Math.min(Math.max(parseInt(limit, 10) || 5, 1), 20);
+  const n = Math.min(Math.max(parseInt(limit, 10) || 5, 1), 60);
   return db.query(
     `SELECT m.id, m.kickoff, m.home_code, m.away_code,
             COALESCE(th.name_en, m.home_label_en, m.home_code) AS home_en,
@@ -207,8 +207,9 @@ async function getAllActive() {
 // ריצה יומית: ניחושים לכל המשחקים ב-48 השעות הקרובות (לכל הפחות 5 הקרובים), דילוג על קיימים
 async function generateDaily() {
   if (!process.env.OPENAI_API_KEY) return { ok: false, note: 'no api key' };
+  // כל המשחקים בשבוע הקרוב (7 ימים) שעדיין אין להם ניחושים — דילוג על קיימים
   const row = await db.one(
-    "SELECT COUNT(*) AS n FROM matches WHERE status <> 'finished' AND kickoff >= UTC_TIMESTAMP() AND kickoff <= (UTC_TIMESTAMP() + INTERVAL 2 DAY)"
+    "SELECT COUNT(*) AS n FROM matches WHERE status <> 'finished' AND kickoff >= UTC_TIMESTAMP() AND kickoff <= (UTC_TIMESTAMP() + INTERVAL 7 DAY)"
   );
   const limit = Math.max(5, Number(row?.n || 0));
   return generateForNextMatches(limit, false);
