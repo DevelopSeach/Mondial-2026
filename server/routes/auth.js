@@ -79,6 +79,7 @@ async function sanitize(user) {
     isGuest: !!user.is_guest,
     canGuessGroups: siteGuessGroupsEnabled && (!!user.is_admin || !!user.can_guess_groups),
     publishPrediction: user.publish_prediction == null ? true : !!user.publish_prediction,
+    gender: ['male', 'female', 'irrelevant', 'random'].includes(user.gender) ? user.gender : 'random',
     createdAt: user.created_at
   };
 }
@@ -187,6 +188,10 @@ router.post('/profile', auth(), upload.single('profile_image'), async (req, res)
     if (req.body?.publish_prediction !== undefined) {
       await db.run('UPDATE users SET publish_prediction = ? WHERE id = ?',
         [req.body.publish_prediction ? 1 : 0, req.user.id]);
+    }
+    // מגדר (אם נשלח)
+    if (req.body?.gender !== undefined && ['male', 'female', 'irrelevant', 'random'].includes(String(req.body.gender))) {
+      await db.run('UPDATE users SET gender = ? WHERE id = ?', [String(req.body.gender), req.user.id]);
     }
 
     let profileImageUrl = user.profile_image_url || null;

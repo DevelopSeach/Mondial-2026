@@ -15,14 +15,24 @@ function normalizeLanguage(lang) {
   return ['he', 'en', 'ar'].includes(lang) ? lang : 'he';
 }
 
-function interpolate(template, vars) {
-  return String(template || '').replace(/\{(\w+)\}/g, (_, key) => vars?.[key] ?? '');
+// תומך גם בטוקן מגדר: {g:צורת-זכר|צורת-נקבה}
+function interpolate(template, vars, gender) {
+  const s = String(template || '').replace(/\{g:([^|}]*)\|([^}]*)\}/g, (_, m, f) => (gender === 'female' ? f : m));
+  return s.replace(/\{(\w+)\}/g, (_, key) => vars?.[key] ?? '');
 }
 
 export function TranslationProvider({ children }) {
   const { user, updateProfile } = useAuth();
   const [language, setLanguage] = useState(() => normalizeLanguage(localStorage.getItem(STORAGE_KEY) || 'he'));
   const [items, setItems] = useState({});
+  // 'אקראי': נקבע פעם אחת לכל טעינה (לא משתנה בכל רינדור)
+  const [randomGender] = useState(() => (Math.random() < 0.5 ? 'female' : 'male'));
+  const effectiveGender = (() => {
+    const g = user?.gender;
+    if (g === 'female') return 'female';
+    if (g === 'male' || g === 'irrelevant') return 'male';
+    return randomGender; // random / undefined
+  })();
 
   useEffect(() => {
     const preferred = normalizeLanguage(user?.preferred_language || localStorage.getItem(STORAGE_KEY) || 'he');
@@ -63,14 +73,15 @@ export function TranslationProvider({ children }) {
       dir: meta.dir,
       isRtl: meta.dir === 'rtl',
       setLanguage: changeLanguage,
-      t: (key, vars) => interpolate(items[key] || key, vars),
+      gender: effectiveGender,
+      t: (key, vars) => interpolate(items[key] || key, vars, effectiveGender),
       pickText: (he, en, ar) => {
         if (language === 'he') return he || en || ar || '';
         if (language === 'ar') return ar || en || he || '';
         return en || he || ar || '';
       }
     };
-  }, [items, language]);
+  }, [items, language, effectiveGender]);
 
   return <TranslationContext.Provider value={value}>{children}</TranslationContext.Provider>;
 }

@@ -84,10 +84,8 @@ export default function MatchReviewRecorder({ matchId, disabled, onPublished, my
     if (e.key === 'Enter' && state === 'recording') { e.preventDefault(); stop(); }
   };
 
-  const female = (user?.gender === 'female');
-  const idleLabel = hasReview
-    ? (female ? t('reviews.listen_cta_f') : t('reviews.listen_cta'))
-    : t('reviews.publish_cta');
+  // הטקסט מתממגדר אוטומטית דרך טוקן {g:..|..} לפי מגדר המשתמש
+  const idleLabel = hasReview ? t('reviews.listen_cta') : t('reviews.publish_cta');
   const label = state === 'recording' ? t('reviews.recording')
     : state === 'uploading' ? t('reviews.transcribing')
     : (hasReview ? idleLabel : t('reviews.record_tip'));

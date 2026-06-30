@@ -22,6 +22,7 @@ export default function Profile() {
   const [phoneDraft, setPhoneDraft] = useState(user?.phone_number || '');
   const [languageDraft, setLanguageDraft] = useState(user?.preferred_language || language);
   const [publishDraft, setPublishDraft] = useState(user?.publishPrediction !== false);
+  const [genderDraft, setGenderDraft] = useState(user?.gender || 'random');
   const [profileMsg, setProfileMsg] = useState('');
   const [err, setErr] = useState('');
   const [ok, setOk] = useState('');
@@ -80,7 +81,7 @@ export default function Profile() {
     setProfileMsg('');
     setProfileBusy(true);
     try {
-      const res = await updateProfile({ profile_image_file: profileImageFile, phone_number: phoneDraft, preferred_language: languageDraft, publish_prediction: publishDraft });
+      const res = await updateProfile({ profile_image_file: profileImageFile, phone_number: phoneDraft, preferred_language: languageDraft, publish_prediction: publishDraft, gender: genderDraft });
       setProfileMsg(res?.pic_bonus ? t('profile.pic_bonus_granted') : t('profile.saved'));
       setProfileImageFile(null);
     } catch (e) {
@@ -156,6 +157,17 @@ export default function Profile() {
               <input type="checkbox" checked={publishDraft} onChange={(e) => setPublishDraft(e.target.checked)} />
               <span>{t('profile.publish_prediction')}</span>
             </label>
+          </div>
+
+          <div className="field" style={{maxWidth: 420}}>
+            <label>{t('profile.gender')}</label>
+            <select value={genderDraft} onChange={(e) => setGenderDraft(e.target.value)}>
+              <option value="random">{t('profile.gender_random')}</option>
+              <option value="male">{t('profile.gender_male')}</option>
+              <option value="female">{t('profile.gender_female')}</option>
+              <option value="irrelevant">{t('profile.gender_irrelevant')}</option>
+            </select>
+            <small style={{ color: 'var(--muted)' }}>{t('profile.gender_help')}</small>
           </div>
 
           <div className="field" style={{maxWidth: 420}}>
