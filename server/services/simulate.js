@@ -18,6 +18,7 @@ const STRATEGIES = {
   fun:      { he: 'סתם בכיף',         score: 'goals',    stakeMin: 100, stakeMax: 600,  suggest: 1 },
   thinker:  { he: 'מחושב (הסתברות)',  score: 'realistic',stakeMin: 300, stakeMax: 1200, suggest: 2 },
   random:   { he: 'אקראי',           score: 'uniform',  stakeMin: 100, stakeMax: 1500, suggest: 1 },
+  blonde:   { he: 'בלונדיני (הפוך ממישהו)', score: 'blonde', stakeMin: 100, stakeMax: 800, suggest: 1 },
 };
 const STRATEGY_KEYS = Object.keys(STRATEGIES);
 
@@ -333,11 +334,31 @@ async function createOne(strategy, options) {
   const mode = STRATEGIES[strategy]?.score || 'uniform';
   const matches = await loadMatches();
 
+  // אסטרטגיית "בלונדיני": בוחר משתמש חי אקראי ויהמר הפוך ממנו (היפוך תוצאה)
+  let shadowPreds = null;
+  if (strategy === 'blonde') {
+    const shadow = await db.one(
+      `SELECT u.id, u.name FROM users u
+       WHERE u.is_admin = 0 AND u.is_guest = 0 AND u.id <> ?
+         AND NOT EXISTS (SELECT 1 FROM sim_users s WHERE s.user_id = u.id)
+       ORDER BY RAND() LIMIT 1`, [userId]);
+    if (shadow) {
+      persona.shadow_user_id = shadow.id; persona.shadow_name = shadow.name;
+      persona.bio = `${persona.bio || ''} — תמיד מהמר הפוך מ${shadow.name}`.trim();
+      await db.run('UPDATE sim_users SET persona = ? WHERE user_id = ?', [JSON.stringify({ ...persona, phone, email }), userId]);
+      const rows = await db.query('SELECT match_id, home_score, away_score FROM predictions WHERE user_id = ?', [shadow.id]);
+      shadowPreds = new Map(rows.map(r => [r.match_id, r]));
+    }
+  }
+
   // ניחושים — מכל המשחקים (אפשר תת-קבוצה אקראית)
   if (options.bets !== false && matches.length) {
     for (const m of matches) {
       if (Math.random() < 0.12) continue; // מדלג על חלק קטן כדי שייראה אנושי
-      const [h, a] = scoreByStrategy(mode);
+      let h, a;
+      const sp = shadowPreds && shadowPreds.get(m.id);
+      if (sp) { h = sp.away_score; a = sp.home_score; }   // הפוך מהמשתמש החי
+      else { [h, a] = scoreByStrategy(mode); }
       await db.run(
         `INSERT INTO predictions (user_id, match_id, home_score, away_score, points, submitted_at)
          VALUES (?, ?, ?, ?, 0, CURRENT_TIMESTAMP)
@@ -614,4 +635,70 @@ function strategies() {
   return STRATEGY_KEYS.map(k => ({ key: k, label: STRATEGIES[k].he }));
 }
 
-module.exports = { startBatch, listSim, removeSim, removeAll, strategies, ensureSchema, getOne, updateOne, setEnabled, bulkAction, regenerateAvatar, history };
+// ───────────── פעילות אורגנית (בוטים פעילים פועלים לאורך זמן) ─────────────
+async function simSetting(key, def) {
+  try { const r = await db.one('SELECT `value` FROM settings WHERE `key` = ?', [key]); return r ? r.value : def; }
+  catch (e) { return def; }
+}
+function kickoffMs(kk) { const s = String(kk); return new Date(s.endsWith('Z') ? s : `${s.replace(' ', 'T')}Z`).getTime(); }
+
+async function organicRebet(bot, lockH) {
+  const rows = await db.query("SELECT id, kickoff FROM matches WHERE status <> 'finished' ORDER BY RAND() LIMIT 12");
+  for (const m of rows) {
+    if (Date.now() >= kickoffMs(m.kickoff) - lockH * 3600 * 1000) continue; // נעול
+    const [h, a] = scoreByStrategy(STRATEGIES[bot.strategy]?.score || 'uniform');
+    await db.run(
+      `INSERT INTO predictions (user_id, match_id, home_score, away_score, points, submitted_at)
+       VALUES (?, ?, ?, ?, 0, CURRENT_TIMESTAMP)
+       ON DUPLICATE KEY UPDATE home_score=VALUES(home_score), away_score=VALUES(away_score), submitted_at=CURRENT_TIMESTAMP, points=0`,
+      [bot.user_id, m.id, h, a]
+    );
+    return 1;
+  }
+  return 0;
+}
+
+async function organicReview(bot) {
+  const m = await db.one(`SELECT m.id, COALESCE(ht.name_he, m.home_label_he, m.home_code) AS home, COALESCE(at.name_he, m.away_label_he, m.away_code) AS away
+    FROM matches m LEFT JOIN teams ht ON ht.code=m.home_code LEFT JOIN teams at ON at.code=m.away_code
+    WHERE m.status <> 'finished' AND NOT EXISTS (SELECT 1 FROM match_reviews r WHERE r.match_id=m.id AND r.user_id=?)
+    ORDER BY RAND() LIMIT 1`, [bot.user_id]);
+  if (!m) return 0;
+  await db.run(
+    `INSERT INTO match_reviews (user_id, match_id, body, status) VALUES (?, ?, ?, 'published')
+     ON DUPLICATE KEY UPDATE body=VALUES(body), status='published'`,
+    [bot.user_id, m.id, fallbackReview(m)]
+  );
+  return 1;
+}
+
+async function organicVote(bot) {
+  const r = await db.one('SELECT id FROM match_reviews WHERE status="published" AND user_id<>? AND id NOT IN (SELECT review_id FROM review_votes WHERE voter_user_id=?) ORDER BY RAND() LIMIT 1', [bot.user_id, bot.user_id]);
+  if (!r) return 0;
+  await db.run('INSERT IGNORE INTO review_votes (review_id, voter_user_id) VALUES (?, ?)', [r.id, bot.user_id]);
+  return 1;
+}
+
+// טיק אחד: מספר בוטים פעילים מבצעים פעולה קטנה אקראית
+async function organicTick(opts = {}) {
+  await ensureSchema();
+  if (String(await simSetting('sim_organic_enabled', '1')).toLowerCase() !== '1' && !opts.force) return { skipped: 'disabled' };
+  const enabled = await db.query('SELECT user_id, strategy FROM sim_users WHERE enabled = 1');
+  if (!enabled.length) return { acted: 0, bots: 0 };
+  const lockH = Number(await simSetting('lock_hours_before', 1)) || 1;
+  const max = Math.min(Number(opts.max) || (2 + rnd(4)), enabled.length); // 2-5 בוטים
+  const pool = enabled.slice();
+  let acted = 0;
+  for (let i = 0; i < max && pool.length; i += 1) {
+    const bot = pool.splice(rnd(pool.length), 1)[0];
+    const action = pick(['rebet', 'review', 'vote', 'vote']);
+    try {
+      if (action === 'rebet') acted += await organicRebet(bot, lockH);
+      else if (action === 'review') acted += await organicReview(bot);
+      else acted += await organicVote(bot);
+    } catch (e) { /* */ }
+  }
+  return { acted, bots: max };
+}
+
+module.exports = { startBatch, listSim, removeSim, removeAll, strategies, ensureSchema, getOne, updateOne, setEnabled, bulkAction, regenerateAvatar, history, organicTick };

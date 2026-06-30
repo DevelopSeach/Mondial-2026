@@ -198,6 +198,14 @@ cron.schedule('*/5 * * * *', () => {
     .catch((e) => console.error('   ✗ תזכורות טרום-משחק נכשלו:', e.message));
 }, { timezone: 'Asia/Jerusalem' });
 
+// פעילות אורגנית של בוטי סימולציה (כל 20 דק׳): בוטים פעילים מעדכנים ניחושים/ריביוים/לייקים
+// בשליטת ההגדרה sim_organic_enabled (ברירת מחדל: פעיל). פועל רק על בוטים מאופשרים.
+cron.schedule('*/20 * * * *', () => {
+  require('./services/simulate').organicTick()
+    .then((r) => { if (r && r.acted) console.log(`   🤖 פעילות בוטים אורגנית: ${r.acted} פעולות (${r.bots} בוטים)`); })
+    .catch((e) => console.error('   ✗ פעילות בוטים נכשלה:', e.message));
+}, { timezone: 'Asia/Jerusalem' });
+
 const PORT = process.env.PORT || 4026;
 
 // המתנה לחיבור DB לפני האזנה
