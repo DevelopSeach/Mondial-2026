@@ -54,10 +54,20 @@ export default function MatchReviewRecorder({ matchId, disabled, onPublished, my
   const upload = async () => {
     setState('uploading');
     try {
-      const blob = new Blob(chunksRef.current, { type: chunksRef.current[0]?.type || 'audio/webm' });
+      // סוג ההקלטה תלוי-דפדפן: דסקטופ → webm/opus, מובייל (iOS) → mp4/aac.
+      // שולחים סיומת תואמת כדי שהקובץ יישמר ויתומלל נכון.
+      const type = chunksRef.current[0]?.type || 'audio/webm';
+      const ext = /mp4|m4a|aac/.test(type) ? 'm4a'
+        : /ogg/.test(type) ? 'ogg'
+        : /wav/.test(type) ? 'wav'
+        : /mpeg|mp3/.test(type) ? 'mp3'
+        : 'webm';
+      const blob = new Blob(chunksRef.current, { type });
+      if (!blob.size) { setErr(t('reviews.failed')); setState('idle'); return; }
       const form = new FormData();
-      form.append('audio', blob, 'review.webm');
-      const r = await api.post('/reviews/transcribe', form);
+      form.append('audio', blob, `review.${ext}`);
+      // התמלול סינכרוני ועלול לארוך — timeout ארוך (ברירת המחדל של 30 שניות קצרה למובייל)
+      const r = await api.post('/reviews/transcribe', form, { timeout: 180000 });
       setModal({ audioUrl: r.data?.audio_url || null, transcript: r.data?.transcript || '', warning: r.data?.warning || '' });
     } catch (e) {
       setErr(t('reviews.failed'));
