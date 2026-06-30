@@ -13,6 +13,20 @@ const db = require('../db');
 const { auth } = require('../middleware/auth');
 const { updateMatchScore, runDailyUpdate, scanAvailableFixturesFromESPN } = require('../services/scraper');
 const { recalcForMatch, loadBadgeConfig, DEFAULT_BADGE_CONFIG, leaderboard } = require('../services/scoring');
+const { getShabbatState } = require('../lib/shabbat');
+
+// אתר שומר שבת — חוסם שליחת הודעות בזמן שבת אם המצב פעיל. מחזיר true אם נחסם.
+async function blockedByShabbat(res) {
+  const s = await db.one("SELECT `value` FROM settings WHERE `key` = 'shabbat_mode'");
+  const on = s && ['1', 'true', 'on', 'yes'].includes(String(s.value).toLowerCase());
+  if (!on) return false;
+  const sh = await getShabbatState('Asia/Jerusalem');
+  if (sh.active || sh.error) {
+    res.status(409).json({ error: 'האתר שומר שבת — לא נשלחות הודעות בזמן שבת/חג' });
+    return true;
+  }
+  return false;
+}
 const { renderLeaderboardPng, sendLeaderboardReport, sendUserResultsReport } = require('../services/leaderboard-report');
 const { seedScheduleItems } = require('../lib/schedule-items');
 const { seedFooterDocuments } = require('../lib/footer-content');
@@ -1849,6 +1863,7 @@ router.post('/send-emails', upload.array('attachments', 6), async (req, res) => 
     if (!subject || !body) {
       return res.status(400).json({ error: 'יש להזין כותרת ותוכן הודעה' });
     }
+    if (await blockedByShabbat(res)) return;
 
     const smtpSettings = await readSettingsMap([
       'smtp_server',
