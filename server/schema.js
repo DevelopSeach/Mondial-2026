@@ -289,6 +289,8 @@ module.exports = [
     creator_id     INT          NOT NULL,
     opponent_id    INT          NULL,
     target_user_id INT          NULL,
+    max_acceptors  INT          NOT NULL DEFAULT 1,
+    accepted_count INT          NOT NULL DEFAULT 0,
     status         ENUM('open','matched','settled','cancelled','void') NOT NULL DEFAULT 'open',
     winner_id      INT          NULL,
     created_at     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -302,6 +304,21 @@ module.exports = [
     CONSTRAINT fk_coin_bets_creator  FOREIGN KEY (creator_id)     REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT fk_coin_bets_opponent FOREIGN KEY (opponent_id)    REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT fk_coin_bets_target   FOREIGN KEY (target_user_id) REFERENCES users(id) ON DELETE SET NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  // משתתפים בהימור רב-מקבלים (כל מקבל מהמר נגד היוצר בסכום שווה)
+  `CREATE TABLE IF NOT EXISTS coin_bet_participants (
+    id          INT          AUTO_INCREMENT PRIMARY KEY,
+    bet_id      INT          NOT NULL,
+    opponent_id INT          NOT NULL,
+    stake       INT          NOT NULL,
+    won         TINYINT(1)   NULL,
+    created_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_bet_opponent (bet_id, opponent_id),
+    INDEX idx_cbp_bet (bet_id),
+    INDEX idx_cbp_opponent (opponent_id),
+    CONSTRAINT fk_cbp_bet      FOREIGN KEY (bet_id)      REFERENCES coin_bets(id) ON DELETE CASCADE,
+    CONSTRAINT fk_cbp_opponent FOREIGN KEY (opponent_id) REFERENCES users(id)     ON DELETE CASCADE
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
   // ספר חשבונות (audit) לכל תזוזת מטבעות

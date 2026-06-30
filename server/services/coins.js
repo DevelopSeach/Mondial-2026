@@ -75,22 +75,38 @@ async function settleCoinBetsForMatch(matchId) {
 
   await db.tx(async (t) => {
     for (const bet of bets) {
-      if (bet.status === 'open') {
-        // לא נתפס בזמן — החזר ליוצר ובטל
-        await adjust(t, bet.creator_id, bet.stake, 'bet_void_refund', bet.id);
-        await t.run(
-          "UPDATE coin_bets SET status = 'void', settled_at = CURRENT_TIMESTAMP WHERE id = ?",
-          [bet.id]
-        );
+      const creatorWon = outcome === bet.proposition; // היוצר הימר על proposition; כל מקבל על ההפך
+
+      // משתתפים (רב-מקבלים); נפילה לאחור להימור 1:1 ישן עם opponent_id
+      let participants = await t.query(
+        'SELECT id, opponent_id, stake FROM coin_bet_participants WHERE bet_id = ?', [bet.id]
+      );
+      const legacy = participants.length === 0 && bet.opponent_id;
+      if (legacy) participants = [{ id: null, opponent_id: bet.opponent_id, stake: bet.stake }];
+
+      const escrowSlots = legacy ? 1 : Number(bet.max_acceptors || 1);
+
+      // אם אין מקבלים כלל — החזר ליוצר את כל הפיקדון ובטל
+      if (participants.length === 0) {
+        await adjust(t, bet.creator_id, bet.stake * escrowSlots, 'bet_void_refund', bet.id);
+        await t.run("UPDATE coin_bets SET status = 'void', settled_at = CURRENT_TIMESTAMP WHERE id = ?", [bet.id]);
         continue;
       }
-      // matched — היוצר הימר על bet.proposition; היריב על ההפך
-      const creatorWon = outcome === bet.proposition;
-      const winnerId = creatorWon ? bet.creator_id : bet.opponent_id;
-      await adjust(t, winnerId, bet.stake * 2, 'bet_win', bet.id);
+
+      // יישוב כל משתתף — even money: המנצח לוקח 2X של הפיקדון
+      for (const p of participants) {
+        const winnerId = creatorWon ? bet.creator_id : p.opponent_id;
+        await adjust(t, winnerId, p.stake * 2, 'bet_win', bet.id);
+        if (p.id) await t.run('UPDATE coin_bet_participants SET won = ? WHERE id = ?', [creatorWon ? 0 : 1, p.id]);
+      }
+
+      // החזר ליוצר על משבצות שלא נתפסו
+      const refundSlots = escrowSlots - participants.length;
+      if (refundSlots > 0) await adjust(t, bet.creator_id, bet.stake * refundSlots, 'bet_unmatched_refund', bet.id);
+
       await t.run(
         "UPDATE coin_bets SET status = 'settled', winner_id = ?, settled_at = CURRENT_TIMESTAMP WHERE id = ?",
-        [winnerId, bet.id]
+        [creatorWon ? bet.creator_id : null, bet.id]
       );
     }
   });
@@ -145,9 +161,11 @@ async function coinLeaderboard() {
     SELECT u.id, u.name, u.profile_image_url,
       COALESCE(w.balance, ?) AS balance,
       (SELECT COUNT(*) FROM coin_bets b
-         WHERE b.status = 'settled' AND (b.creator_id = u.id OR b.opponent_id = u.id)) AS bets_settled,
-      (SELECT COUNT(*) FROM coin_bets b
-         WHERE b.status = 'settled' AND b.winner_id = u.id) AS bets_won
+         WHERE b.status = 'settled' AND (b.creator_id = u.id OR b.opponent_id = u.id
+           OR EXISTS(SELECT 1 FROM coin_bet_participants p WHERE p.bet_id = b.id AND p.opponent_id = u.id))) AS bets_settled,
+      ((SELECT COUNT(*) FROM coin_bets b WHERE b.status = 'settled' AND b.winner_id = u.id)
+       + (SELECT COUNT(*) FROM coin_bet_participants p JOIN coin_bets b ON b.id = p.bet_id
+            WHERE b.status = 'settled' AND p.opponent_id = u.id AND p.won = 1)) AS bets_won
     FROM users u
     LEFT JOIN coin_wallets w ON w.user_id = u.id
     WHERE u.is_admin = 0 AND u.is_guest = 0
@@ -185,13 +203,14 @@ async function userCoinStats(userId) {
   );
   const agg = await db.one(`
     SELECT
-      SUM(CASE WHEN status = 'settled' THEN 1 ELSE 0 END) AS settled,
-      SUM(CASE WHEN status = 'settled' AND winner_id = ? THEN 1 ELSE 0 END) AS won,
-      SUM(CASE WHEN status = 'open' AND opponent_id IS NULL THEN 1 ELSE 0 END) AS open_offers,
-      SUM(CASE WHEN status = 'matched' THEN 1 ELSE 0 END) AS active
-    FROM coin_bets
-    WHERE creator_id = ? OR opponent_id = ?
-  `, [userId, userId, userId]);
+      (SELECT COUNT(*) FROM coin_bets b WHERE b.status='settled'
+         AND (b.creator_id=? OR EXISTS(SELECT 1 FROM coin_bet_participants p WHERE p.bet_id=b.id AND p.opponent_id=?))) AS settled,
+      ((SELECT COUNT(*) FROM coin_bets b WHERE b.status='settled' AND b.winner_id=?)
+       + (SELECT COUNT(*) FROM coin_bet_participants p JOIN coin_bets b ON b.id=p.bet_id WHERE b.status='settled' AND p.opponent_id=? AND p.won=1)) AS won,
+      (SELECT COUNT(*) FROM coin_bets b WHERE b.status='open' AND b.creator_id=?) AS open_offers,
+      (SELECT COUNT(*) FROM coin_bets b WHERE b.status='matched'
+         AND (b.creator_id=? OR EXISTS(SELECT 1 FROM coin_bet_participants p WHERE p.bet_id=b.id AND p.opponent_id=?))) AS active
+  `, [userId, userId, userId, userId, userId, userId, userId]);
 
   const board = await coinLeaderboard();
   const me = board.find(r => r.id === userId) || null;

@@ -136,6 +136,9 @@ function OpenBoard({ open, propLabel, onAccept, locale, t }) {
               </div>
               <div className="coin-stake"><CoinIcon size={15} /> {b.stake.toLocaleString()}</div>
             </div>
+            {b.max_acceptors > 1 && (
+              <div className="coin-slots">{t('coin.slots', { taken: b.accepted_count, total: b.max_acceptors })}</div>
+            )}
             <div className="coin-card-foot">
               <span className="coin-you-take">{t('coin.you')} <strong>{guessPhrase(t, propLabel, m, b.proposition, true)}</strong></span>
               <button className="btn btn-sm btn-gold" onClick={() => onAccept(b)}>{t('coin.accept')} (<CoinIcon size={15} /> {b.stake.toLocaleString()})</button>
@@ -157,9 +160,10 @@ function MyBets({ mine, matchById, propLabel, userId, onCancel, locale, t }) {
     <div className="coin-list">
       {mine.map(b => {
         const iAmCreator = b.creator_id === userId;
-        const myProp = iAmCreator ? b.proposition : null; // creator backs proposition; opponent backs negation
-        const won = b.status === 'settled' && b.winner_id === userId;
-        const lost = b.status === 'settled' && b.winner_id && b.winner_id !== userId;
+        const accepted = Number(b.accepted_count) || 0;
+        const won = b.status === 'settled' && (iAmCreator ? Number(b.winner_id) === userId : Number(b.my_won) === 1);
+        const lost = b.status === 'settled' && (iAmCreator ? Number(b.winner_id) !== userId : Number(b.my_won) === 0);
+        const netAmount = iAmCreator ? b.stake * Math.max(accepted, 1) : b.stake;
         return (
           <div key={b.id} className={`coin-card ${won ? 'coin-won' : ''} ${lost ? 'coin-lost' : ''}`}>
             <MatchLine m={b} locale={locale} />
@@ -167,18 +171,21 @@ function MyBets({ mine, matchById, propLabel, userId, onCancel, locale, t }) {
               <div>
                 <span>{t('coin.you')} <strong>{guessPhrase(t, propLabel, b, b.proposition, !iAmCreator)}</strong></span>
                 <div className="coin-vs-who">
-                  {b.opponent_id
-                    ? <>{t('coin.vs')} {iAmCreator ? b.opponent_name : b.creator_name}</>
-                    : (b.target_name ? t('coin.waiting_for', { name: b.target_name }) : t('coin.waiting_open'))}
+                  {iAmCreator
+                    ? (Number(b.max_acceptors) > 1
+                        ? t('coin.slots', { taken: accepted, total: b.max_acceptors })
+                        : (b.opponent_name ? <>{t('coin.vs')} {b.opponent_name}</>
+                            : (b.target_name ? t('coin.waiting_for', { name: b.target_name }) : t('coin.waiting_open'))))
+                    : <>{t('coin.vs')} {b.creator_name}</>}
                 </div>
               </div>
               <div className="coin-stake"><CoinIcon size={15} /> {b.stake.toLocaleString()}</div>
             </div>
             <div className="coin-card-foot">
               <span className={`coin-status coin-status-${b.status}`}>{statusLabel[b.status]}</span>
-              {won && <span className="coin-result-win">+{(b.stake * 2).toLocaleString()} <CoinIcon size={15} /></span>}
-              {lost && <span className="coin-result-lose">−{b.stake.toLocaleString()} <CoinIcon size={15} /></span>}
-              {b.status === 'open' && iAmCreator && (
+              {won && <span className="coin-result-win">+{netAmount.toLocaleString()} <CoinIcon size={15} /></span>}
+              {lost && <span className="coin-result-lose">−{netAmount.toLocaleString()} <CoinIcon size={15} /></span>}
+              {b.status === 'open' && iAmCreator && accepted === 0 && (
                 <button className="btn btn-sm btn-outline" onClick={() => onCancel(b)}>{t('coin.cancel')}</button>
               )}
             </div>
@@ -193,6 +200,7 @@ function CreateBet({ matches, propLabel, wallet, onCreated, locale, t, initialTa
   const [matchId, setMatchId] = useState(initialMatchId ? String(initialMatchId) : '');
   const [proposition, setProposition] = useState('home');
   const [stake, setStake] = useState(100);
+  const [maxAcceptors, setMaxAcceptors] = useState(1);
   const [target, setTarget] = useState(initialTarget || null);
   const [userQuery, setUserQuery] = useState('');
   const [userResults, setUserResults] = useState([]);
@@ -220,6 +228,7 @@ function CreateBet({ matches, propLabel, wallet, onCreated, locale, t, initialTa
     try {
       await api.post('/coin-bets', {
         match_id: Number(matchId), proposition, stake: s,
+        max_acceptors: target ? 1 : Math.min(Math.max(Number(maxAcceptors) || 1, 1), 20),
         target_user_id: target ? target.id : null
       });
       onCreated();
@@ -266,6 +275,16 @@ function CreateBet({ matches, propLabel, wallet, onCreated, locale, t, initialTa
         <label>{t('coin.stake')} {wallet && <span style={{ color: 'var(--muted)', fontWeight: 400 }}>({t('coin.balance')}: <CoinIcon size={15} /> {wallet.balance.toLocaleString()})</span>}</label>
         <input type="number" min="1" value={stake} onChange={e => setStake(e.target.value)} />
       </div>
+
+      {!target && (
+        <div className="field">
+          <label>{t('coin.max_acceptors')}</label>
+          <input type="number" min="1" max="20" value={maxAcceptors} onChange={e => setMaxAcceptors(e.target.value)} />
+          <div className="coin-hint">
+            {t('coin.exposure_hint', { total: (Number(stake) * Math.min(Math.max(Number(maxAcceptors) || 1, 1), 20)).toLocaleString(), n: Math.min(Math.max(Number(maxAcceptors) || 1, 1), 20) })}
+          </div>
+        </div>
+      )}
 
       <div className="field">
         <label>{t('coin.challenge_optional')}</label>

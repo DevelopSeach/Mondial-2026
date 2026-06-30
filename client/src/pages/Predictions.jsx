@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api, { errMsg } from '../api/client';
 import Flag from '../components/Flag';
@@ -326,14 +326,30 @@ export default function Predictions() {
   // קיבוץ משחקים לפי תאריך
   const byDay = useMemo(() => {
     const groups = {};
-    const list = matches.filter(m => tab === 'all' || m.stage === tab);
+    const visibleKeys = new Set(visibleStages.map(s => s.key));
+    // בטאב "הכל" מציגים רק שלבים פעילים (שלבים שהסתיימו לגמרי מוסתרים)
+    const list = matches.filter(m => tab === 'all' ? visibleKeys.has(m.stage) : m.stage === tab);
     for (const m of list) {
       const day = ilDayKey(m.kickoff);
       if (!groups[day]) groups[day] = [];
       groups[day].push(m);
     }
     return Object.entries(groups).sort(([a],[b]) => a.localeCompare(b));
-  }, [matches, tab]);
+  }, [matches, tab, visibleStages]);
+
+  // מיקוד אוטומטי למשחק הראשון שטרם שוחק בכניסה למסך
+  const firstUnplayedRef = useRef(null);
+  const scrolledOnce = useRef(false);
+  const firstUnplayedId = useMemo(() => {
+    for (const [, dayMatches] of byDay) for (const m of dayMatches) if (m.status !== 'finished') return m.id;
+    return null;
+  }, [byDay]);
+  useEffect(() => {
+    if (!scrolledOnce.current && firstUnplayedId && firstUnplayedRef.current) {
+      scrolledOnce.current = true;
+      firstUnplayedRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [firstUnplayedId]);
 
   const completedCount = Object.values(predictions).filter(p => Number.isInteger(p.home)).length;
 
@@ -428,7 +444,7 @@ export default function Predictions() {
                 const home = getMatchTeamName(m, 'home', pickText);
                 const away = getMatchTeamName(m, 'away', pickText);
                 return (
-                 <div key={m.id} className="prediction-block">
+                 <div key={m.id} className="prediction-block" ref={m.id === firstUnplayedId ? firstUnplayedRef : null}>
                   <div className={`prediction-row ${locked ? 'locked' : ''} ${finished ? 'finished-result' : ''} ${p.points ? 'scored' : ''}`} dir="rtl">
                     <div className="match-team home">
                       <span className="home-emoji" aria-hidden="true" title="קבוצת בית">🏠</span>
