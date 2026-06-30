@@ -3,6 +3,7 @@ import api from '../api/client';
 import { useTranslation } from '../i18n/TranslationContext';
 import Flag from './Flag';
 import SourceLink from './SourceLink';
+import RichText from './RichText';
 
 const CONF = { low: 'נמוכה', medium: 'בינונית', high: 'גבוהה' };
 
@@ -38,24 +39,24 @@ export default function TeamReviewModal({ code, onClose }) {
 
         {!loading && data && (
           <div className="teamrev-body">
-            {r.summary && <p className="teamrev-summary">{r.summary}</p>}
+            {r.summary && <p className="teamrev-summary"><RichText>{r.summary}</RichText></p>}
 
             {(fs.usual_formation || fs.attacking_style) && (
               <section>
                 <h4>הרכב וסגנון משחק</h4>
-                {fs.usual_formation && <div><b>מערך:</b> {fs.usual_formation}</div>}
+                {fs.usual_formation && <div><b>מערך:</b> <RichText>{fs.usual_formation}</RichText></div>}
                 {Array.isArray(fs.key_players) && fs.key_players.length > 0 && <div><b>שחקני מפתח:</b> {fs.key_players.join(', ')}</div>}
-                {fs.attacking_style && <div><b>התקפה:</b> {fs.attacking_style}</div>}
-                {fs.defensive_structure && <div><b>הגנה:</b> {fs.defensive_structure}</div>}
-                {fs.bench_depth && <div><b>עומק ספסל:</b> {fs.bench_depth}</div>}
+                {fs.attacking_style && <div><b>התקפה:</b> <RichText>{fs.attacking_style}</RichText></div>}
+                {fs.defensive_structure && <div><b>הגנה:</b> <RichText>{fs.defensive_structure}</RichText></div>}
+                {fs.bench_depth && <div><b>עומק ספסל:</b> <RichText>{fs.bench_depth}</RichText></div>}
               </section>
             )}
 
             {Array.isArray(r.advantages) && r.advantages.length > 0 && (
-              <section><h4>יתרונות</h4><ul>{r.advantages.map((a, i) => <li key={i}>{a}</li>)}</ul></section>
+              <section><h4>יתרונות</h4><ul>{r.advantages.map((a, i) => <li key={i}><RichText>{a}</RichText></li>)}</ul></section>
             )}
             {Array.isArray(r.weaknesses) && r.weaknesses.length > 0 && (
-              <section><h4>חסרונות</h4><ul>{r.weaknesses.map((a, i) => <li key={i}>{a}</li>)}</ul></section>
+              <section><h4>חסרונות</h4><ul>{r.weaknesses.map((a, i) => <li key={i}><RichText>{a}</RichText></li>)}</ul></section>
             )}
 
             {Array.isArray(r.key_players) && r.key_players.length > 0 && (
@@ -63,7 +64,7 @@ export default function TeamReviewModal({ code, onClose }) {
                 <h4>שחקני מפתח</h4>
                 <table className="teamrev-table">
                   <thead><tr><th>שחקן</th><th>תפקיד</th><th>למה חשוב</th></tr></thead>
-                  <tbody>{r.key_players.map((p, i) => <tr key={i}><td>{p.name}</td><td>{p.position}</td><td>{p.importance}</td></tr>)}</tbody>
+                  <tbody>{r.key_players.map((p, i) => <tr key={i}><td>{p.name}</td><td>{p.position}</td><td><RichText>{p.importance}</RichText></td></tr>)}</tbody>
                 </table>
               </section>
             )}
@@ -79,7 +80,7 @@ export default function TeamReviewModal({ code, onClose }) {
                         <b>{s.reviewer_label || s.source_name}</b>
                         <SourceLink url={s.url} size={16} label={s.source_name} />
                       </div>
-                      {s.main_point && <div className="teamrev-source-point">{s.main_point}</div>}
+                      {s.main_point && <div className="teamrev-source-point"><RichText>{s.main_point}</RichText></div>}
                     </div>
                   </div>
                 ))}
@@ -89,9 +90,9 @@ export default function TeamReviewModal({ code, onClose }) {
             {(pa.ceiling || pa.biggest_danger) && (
               <section className="teamrev-assess">
                 <h4>סיכום מקצועי</h4>
-                {pa.ceiling && <div><b>תקרת זכוכית:</b> {pa.ceiling}</div>}
-                {pa.main_condition_for_success && <div><b>תנאי להצלחה:</b> {pa.main_condition_for_success}</div>}
-                {pa.biggest_danger && <div><b>הסכנה הגדולה:</b> {pa.biggest_danger}</div>}
+                {pa.ceiling && <div><b>תקרת זכוכית:</b> <RichText>{pa.ceiling}</RichText></div>}
+                {pa.main_condition_for_success && <div><b>תנאי להצלחה:</b> <RichText>{pa.main_condition_for_success}</RichText></div>}
+                {pa.biggest_danger && <div><b>הסכנה הגדולה:</b> <RichText>{pa.biggest_danger}</RichText></div>}
                 {pa.confidence_level && <div><b>רמת ביטחון:</b> {CONF[pa.confidence_level] || pa.confidence_level}</div>}
               </section>
             )}

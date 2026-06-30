@@ -4,6 +4,7 @@ import { useTranslation } from '../i18n/TranslationContext';
 import { useAuth } from '../context/AuthContext';
 import PredictorIcon from './PredictorIcon';
 import SourceLink from './SourceLink';
+import RichText from './RichText';
 
 // לוגו המקור לפי הדומיין (favicon גדול דרך שירות גוגל)
 function logoFor(url) {
@@ -69,8 +70,8 @@ export default function MatchPredictionButtons({ data, reviews }) {
               <button className="aipred-x" onClick={() => setOpen(null)}>×</button>
             </div>
             <div className="aipred-type">{typeLabel(cur.prediction_type)}</div>
-            <div className="aipred-pred">{cur.prediction || '—'}</div>
-            {cur.notes && <div className="aipred-notes">{cur.notes}</div>}
+            <div className="aipred-pred"><RichText>{cur.prediction || '—'}</RichText></div>
+            {cur.notes && <div className="aipred-notes"><RichText>{cur.notes}</RichText></div>}
             {cur.source_url && (
               <div className="aipred-link-row">{t('aipred.open_source')} <SourceLink url={cur.source_url} size={20} label={cur.source_name} /></div>
             )}
@@ -79,7 +80,7 @@ export default function MatchPredictionButtons({ data, reviews }) {
                 <strong>{t('aipred.consensus')}</strong>
                 <div>{t('aipred.suggested_score')}: <b>{consensus.suggested_score || '—'}</b>{consensus.most_common ? ` · ${consensus.most_common}` : ''}</div>
                 {consensus.confidence && <div>{t('aipred.confidence')}: {t(`aipred.conf_${consensus.confidence}`)}</div>}
-                {consensus.explanation && <div className="aipred-expl">{consensus.explanation}</div>}
+                {consensus.explanation && <div className="aipred-expl"><RichText>{consensus.explanation}</RichText></div>}
               </div>
             )}
           </div>
