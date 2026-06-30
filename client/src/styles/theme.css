@@ -2140,6 +2140,9 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
 .coin-find-mypick { font-size: 13px; color: var(--muted, #777); margin: 6px 0; }
 .coin-find-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-top: 1px solid #f0f0f0; font-size: 14px; }
 .coin-find-user { display: inline-flex; align-items: center; gap: 4px; }
+.coin-field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; color: var(--ink, #222); margin-bottom: 12px; max-width: 360px; }
+.coin-field select, .coin-field input { font-weight: 400; padding: 8px 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+.coin-subhead { margin: 22px 0 8px; font-size: 15px; font-weight: 800; color: var(--gold-deep, #b8860b); }
 .source-link { display: inline-flex; align-items: center; vertical-align: middle; }
 .source-link img { border-radius: 4px; }
 .aipred-link-row { display: flex; align-items: center; gap: 6px; margin-top: 8px; color: #6b4e9a; font-weight: 700; font-size: 13px; }

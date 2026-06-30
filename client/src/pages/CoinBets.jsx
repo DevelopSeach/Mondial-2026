@@ -58,6 +58,16 @@ export default function CoinBets() {
 
   const matchById = useMemo(() => Object.fromEntries(matches.map(m => [m.id, m])), [matches]);
 
+  // רשימת נבחרות ייחודית (קוד+שם עברי) להימורי אלופה/סגנית
+  const teamOptions = useMemo(() => {
+    const map = {};
+    matches.forEach(m => ['home', 'away'].forEach(side => {
+      const code = m[`${side}_code`];
+      if (code && !map[code]) map[code] = getMatchTeamName(m, side, pickText).name || code.toUpperCase();
+    }));
+    return Object.entries(map).map(([code, name]) => ({ code, name })).sort((a, b) => a.name.localeCompare(b.name, 'he'));
+  }, [matches, pickText]);
+
   const refresh = () => { setErr(''); load(); };
 
   const act = async (fn, okMsg) => {
@@ -83,6 +93,7 @@ export default function CoinBets() {
         <button className={`tab ${tab === 'board' ? 'active' : ''}`} onClick={() => setTab('board')}>{t('coin.tab_board')}</button>
         <button className={`tab ${tab === 'create' ? 'active' : ''}`} onClick={() => setTab('create')}>{t('coin.tab_create')}</button>
         <button className={`tab ${tab === 'find' ? 'active' : ''}`} onClick={() => setTab('find')}>{t('coin.tab_find')}</button>
+        <button className={`tab ${tab === 'special' ? 'active' : ''}`} onClick={() => setTab('special')}>{t('coin.tab_special')}</button>
         <button className={`tab ${tab === 'mine' ? 'active' : ''}`} onClick={() => setTab('mine')}>{t('coin.tab_mine')}</button>
         <button className={`tab ${tab === 'leaderboard' ? 'active' : ''}`} onClick={() => setTab('leaderboard')}>{t('coin.tab_leaderboard')}</button>
       </div>
@@ -103,6 +114,10 @@ export default function CoinBets() {
       {tab === 'find' && (
         <FindOpponent propLabel={propLabel} locale={locale} t={t}
           onChallenge={(o) => { setPrefill({ matchId: o.match_id, proposition: o.my_prop, target: { id: o.user_id, name: o.user_name } }); setTab('create'); }} />
+      )}
+
+      {tab === 'special' && (
+        <SpecialBets teamOptions={teamOptions} t={t} userId={user.id} onAfterChange={refresh} />
       )}
 
       {tab === 'mine' && (
@@ -355,6 +370,108 @@ function FindOpponent({ propLabel, locale, t, onChallenge }) {
           ))}
         </div>
       ))}
+    </div>
+  );
+}
+
+function SpecialBets({ teamOptions, t, userId, onAfterChange }) {
+  const [market, setMarket] = useState('champion');
+  const [subjectCode, setSubjectCode] = useState('');
+  const [topScorer, setTopScorer] = useState('');
+  const [proposition, setProposition] = useState('yes');
+  const [stake, setStake] = useState(100);
+  const [open, setOpen] = useState([]);
+  const [mine, setMine] = useState([]);
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const reload = () => {
+    api.get('/coin-bets/special/open').then(r => setOpen(r.data || [])).catch(() => {});
+    api.get('/coin-bets/special/mine').then(r => setMine(r.data || [])).catch(() => {});
+  };
+  useEffect(reload, []);
+
+  const marketLabel = { champion: t('coin.sp_champion'), runner_up: t('coin.sp_runner_up'), top_scorer: t('coin.sp_top_scorer') };
+  const isTop = market === 'top_scorer';
+  const yesNo = (p) => p === 'yes' ? t('common.yes') : t('common.no');
+  const line = (b) => `${marketLabel[b.market]}: ${b.subject_label} — ${yesNo(b.proposition)}`;
+
+  const run = async (fn) => { setMsg(''); setBusy(true); try { await fn(); reload(); onAfterChange && onAfterChange(); } catch (e) { setMsg(e?.response?.data?.error || 'שגיאה'); } finally { setBusy(false); } };
+
+  const create = () => run(async () => {
+    const subject_code = isTop ? topScorer.trim() : subjectCode;
+    if (!subject_code) { throw { response: { data: { error: t('coin.sp_pick_subject') } } }; }
+    const subject_label = isTop ? topScorer.trim() : (teamOptions.find(o => o.code === subjectCode)?.name || subjectCode);
+    await api.post('/coin-bets/special', { market, subject_code, subject_label, proposition, stake: Number(stake) });
+    setSubjectCode(''); setTopScorer(''); setMsg(t('coin.created'));
+  });
+
+  return (
+    <div className="coin-create">
+      {msg && <div className="alert alert-success" style={{ marginBottom: 12 }}>{msg}</div>}
+      <p className="coin-hint">{t('coin.sp_help')}</p>
+
+      <label className="coin-field">{t('coin.sp_market')}
+        <select value={market} onChange={e => { setMarket(e.target.value); setSubjectCode(''); }}>
+          <option value="champion">{t('coin.sp_champion')}</option>
+          <option value="runner_up">{t('coin.sp_runner_up')}</option>
+          <option value="top_scorer">{t('coin.sp_top_scorer')}</option>
+        </select>
+      </label>
+
+      <label className="coin-field">{t('coin.sp_subject')}
+        {isTop ? (
+          <input value={topScorer} onChange={e => setTopScorer(e.target.value)} placeholder={t('coin.sp_top_scorer_ph')} />
+        ) : (
+          <select value={subjectCode} onChange={e => setSubjectCode(e.target.value)}>
+            <option value="">— {t('coin.sp_pick_subject')} —</option>
+            {teamOptions.map(o => <option key={o.code} value={o.code}>{flagEmojiFromCode(o.code)} {o.name}</option>)}
+          </select>
+        )}
+      </label>
+
+      <label className="coin-field">{t('coin.sp_your_call')}
+        <select value={proposition} onChange={e => setProposition(e.target.value)}>
+          <option value="yes">{t('common.yes')}</option>
+          <option value="no">{t('common.no')}</option>
+        </select>
+      </label>
+
+      <label className="coin-field">{t('coin.stake')}
+        <input type="number" min="1" value={stake} onChange={e => setStake(e.target.value)} />
+      </label>
+
+      <button className="btn btn-gold" disabled={busy} onClick={create}>{t('coin.create_offer')}</button>
+
+      <h3 className="coin-subhead">{t('coin.sp_open_title')}</h3>
+      {open.length === 0 ? <div className="coin-empty">{t('coin.sp_open_empty')}</div> : (
+        <div className="coin-list">
+          {open.map(b => (
+            <div key={b.id} className="coin-card coin-find-row">
+              <span>{line(b)} · <CoinIcon size={13} /> {b.stake} · {b.creator_name}</span>
+              <button className="btn btn-sm btn-gold" disabled={busy} onClick={() => run(() => api.post(`/coin-bets/special/${b.id}/accept`))}>{t('coin.accept')}</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <h3 className="coin-subhead">{t('coin.sp_mine_title')}</h3>
+      {mine.length === 0 ? <div className="coin-empty">{t('coin.sp_mine_empty')}</div> : (
+        <div className="coin-list">
+          {mine.map(b => {
+            const iWon = b.status === 'settled' && ((b.creator_id === userId) === (b.creator_won === 1));
+            return (
+              <div key={b.id} className="coin-card coin-find-row">
+                <span>{line(b)} · <CoinIcon size={13} /> {b.stake} · <em>{t(`coin.sp_status_${b.status}`)}</em>
+                  {b.status === 'settled' && <strong style={{ marginInlineStart: 6, color: iWon ? 'var(--pitch,#2e7d32)' : '#b00' }}>{iWon ? t('coin.you_won') : t('coin.you_lost')}</strong>}
+                </span>
+                {b.status === 'open' && b.creator_id === userId &&
+                  <button className="btn btn-sm" disabled={busy} onClick={() => run(() => api.post(`/coin-bets/special/${b.id}/cancel`))}>{t('coin.cancel')}</button>}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

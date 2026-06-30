@@ -253,6 +253,105 @@ async function userCoinStats(userId) {
   };
 }
 
+// ───────── הימורי ניחושים מיוחדים (אלופה/סגנית/מלך שערים) כן/לא מול יריב ─────────
+const SPECIAL_MARKETS = ['champion', 'runner_up', 'top_scorer'];
+const SPECIAL_SETTING = { champion: 'real_champion', runner_up: 'real_runner_up', top_scorer: 'real_top_scorer' };
+
+async function getSettingStr(key) {
+  const r = await db.one('SELECT `value` FROM settings WHERE `key` = ?', [key]);
+  return r && r.value != null ? String(r.value) : '';
+}
+
+async function createSpecialBet(creatorId, { market, subject_code, subject_label, proposition, stake }) {
+  if (!SPECIAL_MARKETS.includes(market)) throw new Error('שוק לא חוקי');
+  if (!subject_code || !String(subject_code).trim()) throw new Error('יש לבחור נושא להימור');
+  if (!['yes', 'no'].includes(proposition)) throw new Error('בחירה לא חוקית');
+  const amt = Math.trunc(Number(stake));
+  if (!Number.isFinite(amt) || amt <= 0) throw new Error('סכום לא חוקי');
+  const bal = await ensureWallet(creatorId);
+  if (bal < amt) throw new Error('אין מספיק שיחים');
+  return db.tx(async t => {
+    await adjust(t, creatorId, -amt, 'special_bet_create', null);
+    const r = await t.run(
+      `INSERT INTO coin_special_bets (creator_id, market, subject_code, subject_label, proposition, stake, status)
+       VALUES (?, ?, ?, ?, ?, ?, 'open')`,
+      [creatorId, market, String(subject_code).trim().slice(0, 60), String(subject_label || subject_code).trim().slice(0, 120), proposition, amt]
+    );
+    return { id: r.insertId };
+  });
+}
+
+async function acceptSpecialBet(betId, opponentId) {
+  return db.tx(async t => {
+    const b = await t.one("SELECT * FROM coin_special_bets WHERE id = ? FOR UPDATE", [betId]);
+    if (!b) throw new Error('ההימור לא נמצא');
+    if (b.status !== 'open') throw new Error('ההימור כבר נתפס');
+    if (b.creator_id === opponentId) throw new Error('אי אפשר לאשר הימור של עצמך');
+    await ensureWalletTx(t, opponentId);
+    const w = await t.one('SELECT balance FROM coin_wallets WHERE user_id = ?', [opponentId]);
+    if (!w || Number(w.balance) < b.stake) throw new Error('אין מספיק שיחים');
+    await adjust(t, opponentId, -b.stake, 'special_bet_accept', null);
+    await t.run("UPDATE coin_special_bets SET status='matched', opponent_id=? WHERE id=? AND status='open'", [opponentId, betId]);
+    return { ok: true };
+  });
+}
+
+async function cancelSpecialBet(betId, userId) {
+  return db.tx(async t => {
+    const b = await t.one("SELECT * FROM coin_special_bets WHERE id = ? FOR UPDATE", [betId]);
+    if (!b) throw new Error('ההימור לא נמצא');
+    if (b.creator_id !== userId) throw new Error('אפשר לבטל רק הימור שיצרת');
+    if (b.status !== 'open') throw new Error('אי אפשר לבטל הימור שכבר נתפס');
+    await adjust(t, b.creator_id, b.stake, 'special_bet_refund', null);
+    await t.run("UPDATE coin_special_bets SET status='void' WHERE id=? AND status='open'", [betId]);
+    return { ok: true };
+  });
+}
+
+async function listOpenSpecialBets(userId) {
+  return db.query(
+    `SELECT b.id, b.market, b.subject_code, b.subject_label, b.proposition, b.stake, b.created_at,
+            u.name AS creator_name, u.profile_image_url AS creator_image
+     FROM coin_special_bets b JOIN users u ON u.id = b.creator_id
+     WHERE b.status='open' AND b.creator_id <> ?
+     ORDER BY b.created_at DESC LIMIT 100`, [userId]);
+}
+
+async function listMySpecialBets(userId) {
+  return db.query(
+    `SELECT b.*, cu.name AS creator_name, ou.name AS opponent_name
+     FROM coin_special_bets b
+     JOIN users cu ON cu.id = b.creator_id
+     LEFT JOIN users ou ON ou.id = b.opponent_id
+     WHERE b.creator_id = ? OR b.opponent_id = ?
+     ORDER BY b.created_at DESC LIMIT 100`, [userId, userId]);
+}
+
+// יישוב הימורים מיוחדים — נקרא כשמוגדרות התוצאות האמיתיות (real_champion וכו')
+async function settleSpecialBets() {
+  const real = {};
+  for (const m of SPECIAL_MARKETS) real[m] = (await getSettingStr(SPECIAL_SETTING[m])).trim();
+  const bets = await db.query("SELECT * FROM coin_special_bets WHERE status='matched'");
+  let settled = 0;
+  for (const b of bets) {
+    const actual = real[b.market];
+    if (!actual) continue; // התוצאה עדיין לא הוגדרה
+    const hit = b.market === 'top_scorer'
+      ? actual.toLowerCase() === String(b.subject_code).trim().toLowerCase()
+      : actual === String(b.subject_code).trim();
+    const creatorWon = (b.proposition === 'yes') === hit;
+    const winner = creatorWon ? b.creator_id : b.opponent_id;
+    await db.tx(async t => {
+      const row = await t.one("SELECT status FROM coin_special_bets WHERE id=? FOR UPDATE", [b.id]);
+      if (!row || row.status !== 'matched') return;
+      await adjust(t, winner, b.stake * 2, 'special_bet_win', null);
+      await t.run("UPDATE coin_special_bets SET status='settled', creator_won=?, settled_at=NOW() WHERE id=?", [creatorWon ? 1 : 0, b.id]);
+      settled++;
+    });
+  }
+  return { settled };
+}
+
 module.exports = {
   START_BALANCE,
   ensureWallet,
@@ -263,5 +362,11 @@ module.exports = {
   settleReviewReward,
   settleReviewRewardsForMatch,
   coinLeaderboard,
-  userCoinStats
+  userCoinStats,
+  createSpecialBet,
+  acceptSpecialBet,
+  cancelSpecialBet,
+  listOpenSpecialBets,
+  listMySpecialBets,
+  settleSpecialBets
 };

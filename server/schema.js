@@ -335,6 +335,26 @@ module.exports = [
     CONSTRAINT fk_coin_tx_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
+  // הימורי ניחושים מיוחדים מול משתמש אחר (אלופה / סגנית / מלך שערים) — כן/לא
+  `CREATE TABLE IF NOT EXISTS coin_special_bets (
+    id            INT          AUTO_INCREMENT PRIMARY KEY,
+    creator_id    INT          NOT NULL,
+    market        ENUM('champion','runner_up','top_scorer') NOT NULL,
+    subject_code  VARCHAR(60)  NOT NULL,
+    subject_label VARCHAR(120) NOT NULL,
+    proposition   ENUM('yes','no') NOT NULL,
+    stake         INT          NOT NULL,
+    status        ENUM('open','matched','settled','void') NOT NULL DEFAULT 'open',
+    opponent_id   INT          NULL,
+    creator_won   TINYINT(1)   NULL,
+    created_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    settled_at    DATETIME      NULL,
+    INDEX idx_csb_status (status),
+    INDEX idx_csb_creator (creator_id),
+    CONSTRAINT fk_csb_creator  FOREIGN KEY (creator_id)  REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_csb_opponent FOREIGN KEY (opponent_id) REFERENCES users(id) ON DELETE SET NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
   // הצבעות על ריביו (שמעתי/אהבתי) — מזכות את הכותב במטבעות
   `CREATE TABLE IF NOT EXISTS review_votes (
     id            INT          AUTO_INCREMENT PRIMARY KEY,

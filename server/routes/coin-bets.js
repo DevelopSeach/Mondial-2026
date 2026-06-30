@@ -2,9 +2,32 @@
 const express = require('express');
 const db = require('../db');
 const { auth } = require('../middleware/auth');
-const { ensureWallet, adjust, coinLeaderboard, userCoinStats, setChallengeOpen, START_BALANCE } = require('../services/coins');
+const { ensureWallet, adjust, coinLeaderboard, userCoinStats, setChallengeOpen, START_BALANCE,
+  createSpecialBet, acceptSpecialBet, cancelSpecialBet, listOpenSpecialBets, listMySpecialBets } = require('../services/coins');
 
 const router = express.Router();
+
+// ───────── הימורי ניחושים מיוחדים (אלופה/סגנית/מלך שערים) ─────────
+router.get('/special/open', auth(), async (req, res) => {
+  try { res.json(await listOpenSpecialBets(req.user.id)); }
+  catch (e) { console.error('special/open:', e); res.status(500).json({ error: 'שגיאת שרת' }); }
+});
+router.get('/special/mine', auth(), async (req, res) => {
+  try { res.json(await listMySpecialBets(req.user.id)); }
+  catch (e) { console.error('special/mine:', e); res.status(500).json({ error: 'שגיאת שרת' }); }
+});
+router.post('/special', auth(), async (req, res) => {
+  try { res.json(await createSpecialBet(req.user.id, req.body || {})); }
+  catch (e) { res.status(400).json({ error: e.message || 'שגיאה' }); }
+});
+router.post('/special/:id/accept', auth(), async (req, res) => {
+  try { res.json(await acceptSpecialBet(Number(req.params.id), req.user.id)); }
+  catch (e) { res.status(400).json({ error: e.message || 'שגיאה' }); }
+});
+router.post('/special/:id/cancel', auth(), async (req, res) => {
+  try { res.json(await cancelSpecialBet(Number(req.params.id), req.user.id)); }
+  catch (e) { res.status(400).json({ error: e.message || 'שגיאה' }); }
+});
 
 const PROPS = ['home', 'draw', 'away'];
 

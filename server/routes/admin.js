@@ -13,6 +13,7 @@ const db = require('../db');
 const { auth } = require('../middleware/auth');
 const { updateMatchScore, runDailyUpdate, scanAvailableFixturesFromESPN } = require('../services/scraper');
 const { recalcForMatch, loadBadgeConfig, DEFAULT_BADGE_CONFIG, leaderboard } = require('../services/scoring');
+const { settleSpecialBets } = require('../services/coins');
 const { getShabbatState } = require('../lib/shabbat');
 
 // אתר שומר שבת — חוסם שליחת הודעות בזמן שבת אם המצב פעיל. מחזיר true אם נחסם.
@@ -1723,6 +1724,12 @@ router.post('/settings', async (req, res) => {
         );
       }
     });
+    // אם עודכנו תוצאות אמת (אלופה/סגנית/מלך שערים) — יישוב הימורי ניחושים מיוחדים
+    const keys = Object.keys(req.body || {});
+    if (keys.some(k => ['real_champion', 'real_runner_up', 'real_top_scorer'].includes(k))) {
+      try { const r = await settleSpecialBets(); console.log(`   ✓ הימורים מיוחדים יושבו: ${r.settled}`); }
+      catch (e) { console.error('settleSpecialBets:', e.message); }
+    }
     res.json({ ok: true });
   } catch (e) {
     console.error('admin/settings/set:', e);
