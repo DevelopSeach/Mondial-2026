@@ -11,12 +11,13 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [coinsEnabled, setCoinsEnabled] = useState(true); // מתג ראשי למערכת השיחים
+  const [coinsLeaderboardEnabled, setCoinsLeaderboardEnabled] = useState(false); // טבלת מצטייני שיחים (ברירת מחדל כבוי)
 
   // דגלי תכונות ציבוריים
   useEffect(() => {
     api.get('/site/features')
-      .then(r => setCoinsEnabled(r.data?.coins_enabled !== false))
-      .catch(() => setCoinsEnabled(true));
+      .then(r => { setCoinsEnabled(r.data?.coins_enabled !== false); setCoinsLeaderboardEnabled(r.data?.coins_leaderboard_enabled === true); })
+      .catch(() => { setCoinsEnabled(true); setCoinsLeaderboardEnabled(false); });
   }, []);
 
   const persistSession = (token, u) => {
@@ -98,7 +99,7 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={{
       user, loading, login, register, logout, updateProfile,
-      guestStart, guestCheckEmail, guestFinalize, coinsEnabled
+      guestStart, guestCheckEmail, guestFinalize, coinsEnabled, coinsLeaderboardEnabled
     }}>
       {children}
     </AuthContext.Provider>

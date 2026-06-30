@@ -69,10 +69,13 @@ router.get('/features', auth(false), async (req, res) => {
     const row = await db.one("SELECT `value` FROM settings WHERE `key` = 'coins_system_enabled'");
     // ברירת מחדל: פעיל (TRUE) כל עוד לא כובה במפורש
     const coinsEnabled = row == null ? true : ['1', 'true', 'on', 'yes'].includes(String(row.value).toLowerCase());
-    res.json({ coins_enabled: coinsEnabled });
+    // טבלת מצטייני שיחים — ברירת מחדל כבויה (FALSE) עד שמופעלת במפורש
+    const lbRow = await db.one("SELECT `value` FROM settings WHERE `key` = 'coins_leaderboard_enabled'");
+    const coinsLeaderboardEnabled = lbRow == null ? false : ['1', 'true', 'on', 'yes'].includes(String(lbRow.value).toLowerCase());
+    res.json({ coins_enabled: coinsEnabled, coins_leaderboard_enabled: coinsLeaderboardEnabled });
   } catch (e) {
     console.error('site/features:', e.message);
-    res.json({ coins_enabled: true });
+    res.json({ coins_enabled: true, coins_leaderboard_enabled: false });
   }
 });
 

@@ -28,7 +28,7 @@ function guessPhrase(t, propLabel, m, prop, negate) {
 }
 
 export default function CoinBets() {
-  const { user, coinsEnabled } = useAuth();
+  const { user, coinsEnabled, coinsLeaderboardEnabled } = useAuth();
   const { t, locale, pickText } = useTranslation();
   const location = useLocation();
   const challenge = location.state?.challenge; // { userId, userName, matchId }
@@ -104,7 +104,7 @@ export default function CoinBets() {
         <button className={`tab ${tab === 'find' ? 'active' : ''}`} onClick={() => setTab('find')}>{t('coin.tab_find')}</button>
         <button className={`tab ${tab === 'special' ? 'active' : ''}`} onClick={() => setTab('special')}>{t('coin.tab_special')}</button>
         <button className={`tab ${tab === 'mine' ? 'active' : ''}`} onClick={() => setTab('mine')}>{t('coin.tab_mine')}</button>
-        <button className={`tab ${tab === 'leaderboard' ? 'active' : ''}`} onClick={() => setTab('leaderboard')}>{t('coin.tab_leaderboard')}</button>
+        {coinsLeaderboardEnabled && <button className={`tab ${tab === 'leaderboard' ? 'active' : ''}`} onClick={() => setTab('leaderboard')}>{t('coin.tab_leaderboard')}</button>}
       </div>
 
       {tab === 'board' && (
@@ -134,7 +134,7 @@ export default function CoinBets() {
           onCancel={(b) => act(() => api.post(`/coin-bets/${b.id}/cancel`), t('coin.cancelled'))} t={t} />
       )}
 
-      {tab === 'leaderboard' && <CoinLeaderboard board={board} userId={user.id} t={t} />}
+      {coinsLeaderboardEnabled && tab === 'leaderboard' && <CoinLeaderboard board={board} userId={user.id} t={t} />}
     </main>
   );
 }

@@ -1751,6 +1751,17 @@ function SettingsTab() {
           כשמכובה — כל מערכת השיחים (ניחושי שיח-מרקט, הימורים, ארנק, טבלת מצטיינים,
           לשונית השיחים בתפריט ופאנל "ההימורים שלי" בפרופיל) תוסתר ותושבת לחלוטין באתר.
         </p>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', marginTop: 12 }}>
+          <input
+            type="checkbox"
+            checked={['1', 'true', 'on', 'yes'].includes(String(draft.coins_leaderboard_enabled || '').toLowerCase())}
+            onChange={(e) => upd('coins_leaderboard_enabled', e.target.checked ? '1' : '0')}
+          />
+          <span>הצג טבלת מצטייני שיחים</span>
+        </label>
+        <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 6, marginBottom: 0 }}>
+          ברירת מחדל: כבוי. כשמכובה — טבלת מצטייני השיחים (בדף הבית ובלשונית השיחים) מוסתרת.
+        </p>
       </SettingsCard>
 
       <SettingsCard title="אתר שומר שבת">

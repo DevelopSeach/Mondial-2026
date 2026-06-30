@@ -11,7 +11,7 @@ import { useTranslation } from '../i18n/TranslationContext';
 import { ilMs } from '../utils/time';
 
 export default function Home() {
-  const { user, coinsEnabled } = useAuth();
+  const { user, coinsEnabled, coinsLeaderboardEnabled } = useAuth();
   const { t } = useTranslation();
   const [matches, setMatches] = useState([]);
   const [myPredictions, setMyPredictions] = useState([]);
@@ -269,7 +269,7 @@ export default function Home() {
         </>
       )}
 
-      {coinBoard.length > 0 && (
+      {coinsLeaderboardEnabled && coinBoard.length > 0 && (
         <>
           <div className="section-divider">
             <h2><CoinIcon size={20} /> {t('coin.top5_coins')}</h2>
