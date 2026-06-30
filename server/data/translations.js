@@ -243,6 +243,7 @@ const translations = {
   'reviews.save': { he: 'שמור', en: 'Save', ar: 'حفظ' },
   'reviews.mic_denied': { he: 'אין גישה למיקרופון — אשר הרשאה בדפדפן', en: 'No microphone access — allow permission in the browser', ar: 'لا يمكن الوصول إلى الميكروفون — اسمح بالإذن في المتصفح' },
   'reviews.failed': { he: 'שליחת הריביו נכשלה', en: 'Failed to submit the review', ar: 'فشل إرسال المراجعة' },
+  'reviews.no_audio': { he: 'לא נקלט קול בהקלטה — נסו/י להקליט שוב', en: 'No audio captured — please record again', ar: 'لم يُسجَّل صوت — حاول مرة أخرى' },
   'reviews.my_prediction': { he: 'הניחוש: {home}–{away}', en: 'Prediction: {home}–{away}', ar: 'التوقع: {home}–{away}' },
   'reviews.vote_action': { he: 'שמעתי ואהבתי', en: 'Heard & liked', ar: 'سمعت وأعجبني' },
   'reviews.vote_tip': { he: 'הצביעו אם שמעתם ואהבתם — הכותב מרוויח שיחים', en: 'Vote if you heard & liked it — the author earns coins', ar: 'صوّت إذا سمعته وأعجبك — يربح الكاتب عملات' },
