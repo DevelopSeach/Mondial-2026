@@ -210,6 +210,9 @@ const PORT = process.env.PORT || 4026;
     process.exit(1);
   }
 
+  // ודא שטבלת sim_users קיימת — נתיבי הציבור (לוח, שיחים, ריביוים) מסננים לפיה
+  try { await require('./services/simulate').ensureSchema(); } catch (e) { console.error('sim ensureSchema:', e.message); }
+
   app.listen(PORT, () => {
     const mode = (process.env.SCRAPER_MODE || 'manual').padEnd(28);
     const dbLoc = db.config.socketPath

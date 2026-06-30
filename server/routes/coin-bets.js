@@ -168,8 +168,9 @@ router.get('/users', auth(), async (req, res) => {
   try {
     const q = `%${String(req.query.q || '').trim()}%`;
     const rows = await db.query(
-      `SELECT id, name FROM users
+      `SELECT id, name FROM users u
        WHERE is_admin = 0 AND is_guest = 0 AND id <> ? AND name LIKE ?
+         AND NOT EXISTS (SELECT 1 FROM sim_users sx WHERE sx.user_id = u.id AND sx.enabled = 0)
        ORDER BY name ASC LIMIT 20`,
       [req.user.id, q]
     );
@@ -201,6 +202,7 @@ router.get('/opponents', auth(), async (req, res) => {
         WHERE p.home_score IS NOT NULL AND p.away_score IS NOT NULL
       ) op ON op.match_id = myp.match_id AND op.outcome <> myp.outcome AND op.user_id <> ?
       JOIN users u ON u.id = op.user_id AND u.is_admin = 0 AND u.is_guest = 0
+        AND NOT EXISTS (SELECT 1 FROM sim_users sx WHERE sx.user_id = u.id AND sx.enabled = 0)
       JOIN coin_wallets w ON w.user_id = u.id AND w.challenge_open = 1
       WHERE m.kickoff >= UTC_TIMESTAMP()
       ORDER BY m.kickoff ASC, u.name ASC

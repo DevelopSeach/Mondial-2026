@@ -174,6 +174,7 @@ router.get('/match/:id', auth(), async (req, res) => {
       FROM match_reviews r
       JOIN users u ON u.id = r.user_id
       WHERE r.match_id = ? AND r.status = 'published'
+        AND NOT EXISTS (SELECT 1 FROM sim_users sx WHERE sx.user_id = r.user_id AND sx.enabled = 0)
       ORDER BY vote_count DESC, r.created_at DESC
     `, [req.user.id, matchId]);
     rows.forEach(r => { r.vote_count = Number(r.vote_count); r.my_vote = !!Number(r.my_vote); });
@@ -197,6 +198,7 @@ router.get('/summary', auth(), async (req, res) => {
       JOIN users u ON u.id = r.user_id
       JOIN matches m ON m.id = r.match_id
       WHERE r.status = 'published' AND m.status <> 'finished'
+        AND NOT EXISTS (SELECT 1 FROM sim_users sx WHERE sx.user_id = r.user_id AND sx.enabled = 0)
       ORDER BY r.match_id, vote_count DESC, r.created_at DESC
     `);
     await localizeReviews(rows, normLang(req.query.lang));

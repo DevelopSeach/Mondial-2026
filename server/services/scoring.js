@@ -270,6 +270,7 @@ async function leaderboard() {
     FROM users u
     LEFT JOIN predictions p ON p.user_id = u.id
     WHERE u.is_admin = 0 AND u.is_guest = 0
+      AND NOT EXISTS (SELECT 1 FROM sim_users sx WHERE sx.user_id = u.id AND sx.enabled = 0)
     GROUP BY u.id, u.name, u.profile_image_url
   `, [exactWeight, gdHitPoints]);
 

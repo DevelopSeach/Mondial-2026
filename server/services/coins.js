@@ -169,6 +169,7 @@ async function coinLeaderboard() {
     FROM users u
     LEFT JOIN coin_wallets w ON w.user_id = u.id
     WHERE u.is_admin = 0 AND u.is_guest = 0
+      AND NOT EXISTS (SELECT 1 FROM sim_users sx WHERE sx.user_id = u.id AND sx.enabled = 0)
     ORDER BY balance DESC, bets_won DESC, u.name ASC
   `, [START_BALANCE]);
 
@@ -314,6 +315,7 @@ async function listOpenSpecialBets(userId) {
             u.name AS creator_name, u.profile_image_url AS creator_image
      FROM coin_special_bets b JOIN users u ON u.id = b.creator_id
      WHERE b.status='open' AND b.creator_id <> ?
+       AND NOT EXISTS (SELECT 1 FROM sim_users sx WHERE sx.user_id = b.creator_id AND sx.enabled = 0)
      ORDER BY b.created_at DESC LIMIT 100`, [userId]);
 }
 
