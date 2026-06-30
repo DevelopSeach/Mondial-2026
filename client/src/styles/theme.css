@@ -1173,6 +1173,30 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
   color: var(--pitch-deep);
 }
 
+/* תג צלף + היסטוריית שינויי ניחוש */
+.bet-history { display: inline-flex; gap: 6px; align-items: center; position: relative; }
+.hitter-tag {
+  display: inline-flex; align-items: center; gap: 3px;
+  background: linear-gradient(135deg, var(--gold), var(--gold-deep));
+  color: #2a1c00; font-weight: 800; font-size: 11px; letter-spacing: .2px;
+  padding: 2px 8px; border-radius: 999px; white-space: nowrap;
+  box-shadow: 0 1px 4px rgba(0,0,0,.18);
+}
+.bet-history-btn {
+  border: 1px solid var(--paper-dim); background: var(--paper-pure);
+  border-radius: 999px; padding: 1px 7px; font-size: 12px; cursor: pointer; color: var(--muted);
+}
+.bet-history-btn:hover { color: var(--ink); border-color: var(--muted); }
+.bet-history-pop {
+  position: absolute; top: 100%; inset-inline-start: 0; margin-top: 6px; z-index: 40;
+  display: flex; flex-direction: column; gap: 4px; min-width: 200px;
+  background: var(--paper-pure); border: 1px solid var(--paper-dim); border-radius: 10px;
+  padding: 8px 10px; box-shadow: 0 10px 28px rgba(0,0,0,.18); font-weight: 500;
+}
+.bet-history-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink); }
+.bet-history-when { color: var(--muted); white-space: nowrap; }
+.bet-history-tag { color: var(--pitch-deep); font-size: 11px; }
+
 /* תג "Powered by Hinbit" קבוע בפינה שמאלית-תחתונה (כמו הלוגו בפינה השמאלית-עליונה במולטי-דב) */
 .hinbit-powered {
   position: fixed;

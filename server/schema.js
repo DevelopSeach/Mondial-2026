@@ -403,8 +403,22 @@ module.exports = [
     user_id     INT          NOT NULL PRIMARY KEY,
     strategy    VARCHAR(40)  NOT NULL DEFAULT 'random',
     persona     TEXT         NULL,
+    enabled     TINYINT(1)   NOT NULL DEFAULT 1,
     created_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_sim_users_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  // ────────── יומן שינויי ניחושים (לוג לכל הימור לפי זמן) ──────────
+  `CREATE TABLE IF NOT EXISTS prediction_history (
+    id          INT          AUTO_INCREMENT PRIMARY KEY,
+    user_id     INT          NOT NULL,
+    match_id    INT          NOT NULL,
+    home_score  INT          NOT NULL,
+    away_score  INT          NOT NULL,
+    changed_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_ph_user_match (user_id, match_id),
+    CONSTRAINT fk_ph_user  FOREIGN KEY (user_id)  REFERENCES users(id)   ON DELETE CASCADE,
+    CONSTRAINT fk_ph_match FOREIGN KEY (match_id) REFERENCES matches(id) ON DELETE CASCADE
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
 
 ];

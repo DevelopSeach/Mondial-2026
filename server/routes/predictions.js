@@ -14,16 +14,34 @@ async function getSetting(key, def) {
   return r ? r.value : def;
 }
 
+// יומן שינויי ניחושים — נוצר עצלן אם עדיין לא קיים
+let historyReady = false;
+async function ensureHistory() {
+  if (historyReady) return;
+  await db.run(`CREATE TABLE IF NOT EXISTS prediction_history (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL, match_id INT NOT NULL,
+    home_score INT NOT NULL, away_score INT NOT NULL,
+    changed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_ph_user_match (user_id, match_id),
+    CONSTRAINT fk_ph_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_ph_match FOREIGN KEY (match_id) REFERENCES matches(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
+  historyReady = true;
+}
+
 // כל הניחושים של המשתמש המחובר
 router.get('/my', auth(), async (req, res) => {
   try {
+    await ensureHistory();
     const preds = await db.query(`
       SELECT p.*, m.home_code, m.away_code, m.kickoff, m.status,
         m.home_label_he, m.home_label_en, m.home_label_ar,
         m.away_label_he, m.away_label_en, m.away_label_ar,
         th.name_he AS home_name, th.name_en AS home_name_en, th.name_ar AS home_name_ar,
         ta.name_he AS away_name, ta.name_en AS away_name_en, ta.name_ar AS away_name_ar,
-        m.home_score AS actual_home, m.away_score AS actual_away
+        m.home_score AS actual_home, m.away_score AS actual_away,
+        (SELECT COUNT(*) FROM prediction_history h WHERE h.user_id = p.user_id AND h.match_id = p.match_id) AS edit_count
       FROM predictions p
       JOIN matches m ON m.id = p.match_id
       LEFT JOIN teams th ON th.code = m.home_code
@@ -31,6 +49,15 @@ router.get('/my', auth(), async (req, res) => {
       WHERE p.user_id = ?
       ORDER BY m.kickoff ASC
     `, [req.user.id]);
+    // תג "צלף" (first time hitter): ניחוש מדויק שלא שונה מעולם (הגשה אחת בלבד)
+    for (const p of preds) {
+      p.edit_count = Number(p.edit_count || 0);
+      p.first_time_hitter = p.status === 'finished'
+        && p.actual_home != null && p.actual_away != null
+        && Number(p.home_score) === Number(p.actual_home)
+        && Number(p.away_score) === Number(p.actual_away)
+        && p.edit_count === 1;
+    }
 
     const special = await db.one(`
       SELECT sp.*,
@@ -133,6 +160,9 @@ router.post('/match/:id', auth(), async (req, res) => {
       return res.status(403).json({ error: 'מאוחר מדי - הניחושים נעולים למשחק זה' });
     }
 
+    await ensureHistory();
+    const prev = await db.one('SELECT home_score, away_score FROM predictions WHERE user_id = ? AND match_id = ?', [req.user.id, matchId]);
+
     await db.run(`
       INSERT INTO predictions (user_id, match_id, home_score, away_score)
       VALUES (?, ?, ?, ?)
@@ -143,9 +173,34 @@ router.post('/match/:id', auth(), async (req, res) => {
         points       = 0
     `, [req.user.id, matchId, home_score, away_score]);
 
+    // לוג שינוי: הגשה ראשונה, או כל פעם שהתוצאה באמת השתנתה
+    if (!prev || Number(prev.home_score) !== home_score || Number(prev.away_score) !== away_score) {
+      await db.run(
+        'INSERT INTO prediction_history (user_id, match_id, home_score, away_score) VALUES (?, ?, ?, ?)',
+        [req.user.id, matchId, home_score, away_score]
+      );
+    }
+
     res.json({ ok: true });
   } catch (e) {
     console.error('predict-match:', e);
+    res.status(500).json({ error: 'שגיאת שרת' });
+  }
+});
+
+// יומן השינויים של ניחוש מסוים (לפי זמן) עבור המשתמש המחובר
+router.get('/history/:matchId', auth(), async (req, res) => {
+  try {
+    await ensureHistory();
+    const matchId = Number(req.params.matchId);
+    if (!Number.isInteger(matchId)) return res.status(400).json({ error: 'משחק לא תקין' });
+    const rows = await db.query(
+      'SELECT home_score, away_score, changed_at FROM prediction_history WHERE user_id = ? AND match_id = ? ORDER BY changed_at ASC, id ASC',
+      [req.user.id, matchId]
+    );
+    res.json({ match_id: matchId, changes: rows, edit_count: rows.length });
+  } catch (e) {
+    console.error('predictions/history:', e);
     res.status(500).json({ error: 'שגיאת שרת' });
   }
 });

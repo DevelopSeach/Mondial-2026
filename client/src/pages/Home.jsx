@@ -6,6 +6,7 @@ import Flag from '../components/Flag';
 import MatchCard from '../components/MatchCard';
 import CoinIcon from '../components/CoinIcon';
 import ScoreText from '../components/ScoreText';
+import BetHistory from '../components/BetHistory';
 import { useTranslation } from '../i18n/TranslationContext';
 import { ilMs } from '../utils/time';
 
@@ -173,11 +174,13 @@ export default function Home() {
                 <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap'}}>
                   {hasPrediction ? (
                     <span
-                      dir="ltr"
-                      style={{color:'var(--pitch)', fontWeight:700, fontSize:14, display:'inline-flex', gap:6, alignItems:'baseline', flexWrap:'wrap'}}
+                      style={{color:'var(--pitch)', fontWeight:700, fontSize:14, display:'inline-flex', gap:8, alignItems:'center', flexWrap:'wrap'}}
                     >
-                      <span>{t('home.my_guess_label')}</span>
-                      <ScoreText home={p.home_score} away={p.away_score} homeRight />
+                      <span dir="ltr" style={{ display:'inline-flex', gap:6, alignItems:'baseline' }}>
+                        <span>{t('home.my_guess_label')}</span>
+                        <ScoreText home={p.home_score} away={p.away_score} homeRight />
+                      </span>
+                      <BetHistory matchId={m.id} firstTimeHitter={p.first_time_hitter} editCount={p.edit_count} />
                     </span>
                   ) : (
                     <span style={{color:'var(--muted)', fontWeight:600, fontSize:14}}>
