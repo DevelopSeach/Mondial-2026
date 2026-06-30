@@ -147,6 +147,42 @@ router.get('/users', auth(), async (req, res) => {
   }
 });
 
+// ───────── מצא יריב: משתמשים שהניחוש שלהם הפוך לשלך (פתוחים לאתגור) ─────────
+router.get('/opponents', auth(), async (req, res) => {
+  try {
+    const OUTCOME = "(CASE WHEN p.home_score > p.away_score THEN 'home' WHEN p.home_score < p.away_score THEN 'away' ELSE 'draw' END)";
+    const rows = await db.query(`
+      SELECT m.id AS match_id, m.home_code, m.away_code, m.kickoff,
+             myp.outcome AS my_prop,
+             u.id AS user_id, u.name AS user_name, u.profile_image_url,
+             op.outcome AS their_prop
+      FROM (
+        SELECT p.match_id, ${OUTCOME} AS outcome
+        FROM predictions p
+        WHERE p.user_id = ? AND p.home_score IS NOT NULL AND p.away_score IS NOT NULL
+      ) myp
+      JOIN matches m ON m.id = myp.match_id AND m.status <> 'finished'
+      JOIN (
+        SELECT p.user_id, p.match_id, ${OUTCOME} AS outcome
+        FROM predictions p
+        WHERE p.home_score IS NOT NULL AND p.away_score IS NOT NULL
+      ) op ON op.match_id = myp.match_id AND op.outcome <> myp.outcome AND op.user_id <> ?
+      JOIN users u ON u.id = op.user_id AND u.is_admin = 0 AND u.is_guest = 0
+      JOIN coin_wallets w ON w.user_id = u.id AND w.challenge_open = 1
+      WHERE m.kickoff >= UTC_TIMESTAMP()
+      ORDER BY m.kickoff ASC, u.name ASC
+      LIMIT 200
+    `, [req.user.id, req.user.id]);
+    // סינון משחקים נעולים
+    const out = [];
+    for (const r of rows) { if (!(await isMatchLocked(r))) out.push(r); }
+    res.json(out);
+  } catch (e) {
+    console.error('coins/opponents:', e);
+    res.status(500).json({ error: 'שגיאת שרת' });
+  }
+});
+
 // ───────── יצירת הצעת הימור ─────────
 router.post('/', auth(), async (req, res) => {
   try {

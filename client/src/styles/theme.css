@@ -2137,6 +2137,9 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
 .review-challenge-btn:hover { background: var(--gold, #e6b54a); color: #3a2a05; }
 .pic-bonus-note { margin-top: 6px; color: var(--gold-deep, #b8860b); font-weight: 700; font-size: 13px; }
 .coin-slots { font-size: 12px; font-weight: 700; color: var(--gold-deep, #b8860b); margin: 2px 0 6px; }
+.coin-find-mypick { font-size: 13px; color: var(--muted, #777); margin: 6px 0; }
+.coin-find-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-top: 1px solid #f0f0f0; font-size: 14px; }
+.coin-find-user { display: inline-flex; align-items: center; gap: 4px; }
 .source-link { display: inline-flex; align-items: center; vertical-align: middle; }
 .source-link img { border-radius: 4px; }
 .aipred-link-row { display: flex; align-items: center; gap: 6px; margin-top: 8px; color: #6b4e9a; font-weight: 700; font-size: 13px; }

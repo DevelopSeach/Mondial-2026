@@ -33,6 +33,7 @@ export default function CoinBets() {
   const location = useLocation();
   const challenge = location.state?.challenge; // { userId, userName, matchId }
   const [tab, setTab] = useState(challenge ? 'create' : 'board');
+  const [prefill, setPrefill] = useState(null); // { matchId, proposition, target }
   const [wallet, setWallet] = useState(null);
   const [mine, setMine] = useState([]);
   const [open, setOpen] = useState([]);
@@ -81,6 +82,7 @@ export default function CoinBets() {
       <div className="tabs" style={{ marginBottom: 24 }}>
         <button className={`tab ${tab === 'board' ? 'active' : ''}`} onClick={() => setTab('board')}>{t('coin.tab_board')}</button>
         <button className={`tab ${tab === 'create' ? 'active' : ''}`} onClick={() => setTab('create')}>{t('coin.tab_create')}</button>
+        <button className={`tab ${tab === 'find' ? 'active' : ''}`} onClick={() => setTab('find')}>{t('coin.tab_find')}</button>
         <button className={`tab ${tab === 'mine' ? 'active' : ''}`} onClick={() => setTab('mine')}>{t('coin.tab_mine')}</button>
         <button className={`tab ${tab === 'leaderboard' ? 'active' : ''}`} onClick={() => setTab('leaderboard')}>{t('coin.tab_leaderboard')}</button>
       </div>
@@ -92,9 +94,15 @@ export default function CoinBets() {
 
       {tab === 'create' && (
         <CreateBet matches={matches} propLabel={propLabel} wallet={wallet}
-          initialTarget={challenge ? { id: challenge.userId, name: challenge.userName } : null}
-          initialMatchId={challenge?.matchId}
-          onCreated={() => { setTab('mine'); act(async () => {}, t('coin.created')); }} t={t} locale={locale} />
+          initialTarget={prefill?.target || (challenge ? { id: challenge.userId, name: challenge.userName } : null)}
+          initialMatchId={prefill?.matchId ?? challenge?.matchId}
+          initialProposition={prefill?.proposition}
+          onCreated={() => { setPrefill(null); setTab('mine'); act(async () => {}, t('coin.created')); }} t={t} locale={locale} />
+      )}
+
+      {tab === 'find' && (
+        <FindOpponent propLabel={propLabel} locale={locale} t={t}
+          onChallenge={(o) => { setPrefill({ matchId: o.match_id, proposition: o.my_prop, target: { id: o.user_id, name: o.user_name } }); setTab('create'); }} />
       )}
 
       {tab === 'mine' && (
@@ -196,9 +204,9 @@ function MyBets({ mine, matchById, propLabel, userId, onCancel, locale, t }) {
   );
 }
 
-function CreateBet({ matches, propLabel, wallet, onCreated, locale, t, initialTarget, initialMatchId }) {
+function CreateBet({ matches, propLabel, wallet, onCreated, locale, t, initialTarget, initialMatchId, initialProposition }) {
   const [matchId, setMatchId] = useState(initialMatchId ? String(initialMatchId) : '');
-  const [proposition, setProposition] = useState('home');
+  const [proposition, setProposition] = useState(initialProposition || 'home');
   const [stake, setStake] = useState(100);
   const [maxAcceptors, setMaxAcceptors] = useState(1);
   const [target, setTarget] = useState(initialTarget || null);
@@ -311,6 +319,42 @@ function CreateBet({ matches, propLabel, wallet, onCreated, locale, t, initialTa
       <button className="btn btn-gold" onClick={submit} disabled={busy}>
         {busy ? <span className="spinner" /> : t('coin.create_offer')}
       </button>
+    </div>
+  );
+}
+
+function FindOpponent({ propLabel, locale, t, onChallenge }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    api.get('/coin-bets/opponents').then(r => setRows(r.data || [])).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+  const outLabel = (o, prop) => prop === 'draw' ? t('coin.draw')
+    : (prop === 'home' ? (o.home_code || '').toUpperCase() : (o.away_code || '').toUpperCase());
+
+  if (loading) return <div className="coin-empty">{t('common.loading')}</div>;
+  if (!rows.length) return <div className="coin-empty">{t('coin.find_empty')}</div>;
+
+  const byMatch = {};
+  rows.forEach(r => { (byMatch[r.match_id] = byMatch[r.match_id] || { m: r, list: [] }).list.push(r); });
+  return (
+    <div className="coin-list">
+      <p className="coin-hint" style={{ marginBottom: 8 }}>{t('coin.find_help')}</p>
+      {Object.values(byMatch).map(({ m, list }) => (
+        <div key={m.match_id} className="coin-card">
+          <MatchLine m={m} locale={locale} />
+          <div className="coin-find-mypick">{t('coin.your_pick')}: <strong>{outLabel(m, m.my_prop)}</strong></div>
+          {list.map(o => (
+            <div key={o.user_id} className="coin-find-row">
+              <span className="coin-find-user">
+                {o.profile_image_url ? <img className="aipred-logo" style={{ width: 22, height: 22, borderRadius: '50%' }} src={o.profile_image_url} alt="" /> : '👤'}
+                {' '}{o.user_name} · {t('coin.their_pick')}: <strong>{outLabel(o, o.their_prop)}</strong>
+              </span>
+              <button className="btn btn-sm btn-gold" onClick={() => onChallenge(o)}>⚔️ {t('coin.challenge')}</button>
+            </div>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }
