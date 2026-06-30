@@ -112,11 +112,16 @@ router.get('/mine', auth(), async (req, res) => {
     const rows = await db.query(`
       SELECT b.*, m.home_code, m.away_code, m.kickoff, m.status AS match_status,
              m.home_score, m.away_score,
+             m.home_label_he, m.home_label_en, m.home_label_ar, m.away_label_he, m.away_label_en, m.away_label_ar,
+             th.name_he AS home_name, th.name_en AS home_name_en, th.name_ar AS home_name_ar,
+             ta.name_he AS away_name, ta.name_en AS away_name_en, ta.name_ar AS away_name_ar,
              cu.name AS creator_name, ou.name AS opponent_name, tu.name AS target_name,
              EXISTS(SELECT 1 FROM coin_bet_participants p WHERE p.bet_id = b.id AND p.opponent_id = ?) AS i_accepted,
              (SELECT p.won FROM coin_bet_participants p WHERE p.bet_id = b.id AND p.opponent_id = ?) AS my_won
       FROM coin_bets b
       JOIN matches m ON m.id = b.match_id
+      LEFT JOIN teams th ON th.code = m.home_code
+      LEFT JOIN teams ta ON ta.code = m.away_code
       JOIN users cu ON cu.id = b.creator_id
       LEFT JOIN users ou ON ou.id = b.opponent_id
       LEFT JOIN users tu ON tu.id = b.target_user_id
@@ -139,9 +144,14 @@ router.get('/open', auth(), async (req, res) => {
       SELECT b.id, b.match_id, b.proposition, b.stake, b.creator_id, b.target_user_id, b.created_at,
              b.max_acceptors, b.accepted_count,
              m.home_code, m.away_code, m.kickoff, m.status AS match_status,
+             m.home_label_he, m.home_label_en, m.home_label_ar, m.away_label_he, m.away_label_en, m.away_label_ar,
+             th.name_he AS home_name, th.name_en AS home_name_en, th.name_ar AS home_name_ar,
+             ta.name_he AS away_name, ta.name_en AS away_name_en, ta.name_ar AS away_name_ar,
              cu.name AS creator_name, cu.profile_image_url AS creator_image
       FROM coin_bets b
       JOIN matches m ON m.id = b.match_id
+      LEFT JOIN teams th ON th.code = m.home_code
+      LEFT JOIN teams ta ON ta.code = m.away_code
       JOIN users cu ON cu.id = b.creator_id
       WHERE b.status = 'open'
         AND b.creator_id <> ?
@@ -187,6 +197,9 @@ router.get('/opponents', auth(), async (req, res) => {
     const OUTCOME = "(CASE WHEN p.home_score > p.away_score THEN 'home' WHEN p.home_score < p.away_score THEN 'away' ELSE 'draw' END)";
     const rows = await db.query(`
       SELECT m.id AS match_id, m.home_code, m.away_code, m.kickoff,
+             m.home_label_he, m.home_label_en, m.home_label_ar, m.away_label_he, m.away_label_en, m.away_label_ar,
+             th.name_he AS home_name, th.name_en AS home_name_en, th.name_ar AS home_name_ar,
+             ta.name_he AS away_name, ta.name_en AS away_name_en, ta.name_ar AS away_name_ar,
              myp.outcome AS my_prop,
              u.id AS user_id, u.name AS user_name, u.profile_image_url,
              op.outcome AS their_prop
@@ -196,6 +209,8 @@ router.get('/opponents', auth(), async (req, res) => {
         WHERE p.user_id = ? AND p.home_score IS NOT NULL AND p.away_score IS NOT NULL
       ) myp
       JOIN matches m ON m.id = myp.match_id AND m.status <> 'finished'
+      LEFT JOIN teams th ON th.code = m.home_code
+      LEFT JOIN teams ta ON ta.code = m.away_code
       JOIN (
         SELECT p.user_id, p.match_id, ${OUTCOME} AS outcome
         FROM predictions p

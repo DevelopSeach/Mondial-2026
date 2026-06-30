@@ -140,12 +140,15 @@ export default function CoinBets() {
 }
 
 function MatchLine({ m, locale }) {
+  const { pickText } = useTranslation();
   if (!m) return null;
+  const home = getMatchTeamName(m, 'home', pickText).name;
+  const away = getMatchTeamName(m, 'away', pickText).name;
   return (
     <div className="coin-match-line">
-      <Flag code={m.home_code || ''} size="sm" /> <span>{m.home_code?.toUpperCase()}</span>
+      <Flag code={m.home_code || ''} size="sm" /> <span>{home}</span>
       <span className="coin-vs">–</span>
-      <span>{m.away_code?.toUpperCase()}</span> <Flag code={m.away_code || ''} size="sm" />
+      <span>{away}</span> <Flag code={m.away_code || ''} size="sm" />
       <span className="coin-match-when">{ilDate(m.kickoff, locale, { day: '2-digit', month: '2-digit' })} {ilTime(m.kickoff, locale, { hour: '2-digit', minute: '2-digit' })}</span>
     </div>
   );
@@ -353,8 +356,7 @@ function FindOpponent({ propLabel, locale, t, onChallenge }) {
   useEffect(() => {
     api.get('/coin-bets/opponents').then(r => setRows(r.data || [])).catch(() => {}).finally(() => setLoading(false));
   }, []);
-  const outLabel = (o, prop) => prop === 'draw' ? t('coin.draw')
-    : (prop === 'home' ? (o.home_code || '').toUpperCase() : (o.away_code || '').toUpperCase());
+  const outLabel = (o, prop) => propLabel(o, prop); // שמות נבחרות בעברית
 
   if (loading) return <div className="coin-empty">{t('common.loading')}</div>;
   if (!rows.length) return <div className="coin-empty">{t('coin.find_empty')}</div>;
