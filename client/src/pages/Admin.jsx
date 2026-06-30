@@ -85,6 +85,8 @@ function SimulateTab() {
   const [betMatch, setBetMatch] = useState('');
   const [betH, setBetH] = useState('');
   const [betA, setBetA] = useState('');
+  const [filter, setFilter] = useState('');
+  const [randomN, setRandomN] = useState(10);
 
   const load = async () => {
     try {
@@ -100,8 +102,16 @@ function SimulateTab() {
   };
 
   const toggleSel = (id) => setSel(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  const allSelected = list.length > 0 && list.every(u => sel.has(u.user_id));
-  const selectAll = () => setSel(allSelected ? new Set() : new Set(list.map(u => u.user_id)));
+  const shown = list.filter(u => !filter || `${u.name} ${u.email} ${u.strategy_he} ${u.phone_number}`.toLowerCase().includes(filter.toLowerCase()));
+  const allSelected = shown.length > 0 && shown.every(u => sel.has(u.user_id));
+  const selectAll = () => setSel(allSelected ? new Set() : new Set(shown.map(u => u.user_id)));
+  const randomSelect = () => {
+    const n = Math.max(1, Math.min(Number(randomN) || 0, shown.length));
+    const pool = shown.map(u => u.user_id);
+    for (let i = pool.length - 1; i > 0; i -= 1) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+    setSel(new Set(pool.slice(0, n)));
+  };
+  const byStrategy = list.reduce((m, u) => { m[u.strategy_he] = (m[u.strategy_he] || 0) + 1; return m; }, {});
 
   const bulk = async (action, extra = {}) => {
     const ids = [...sel];
@@ -152,10 +162,12 @@ function SimulateTab() {
 
   return (
     <div>
-      <div className="alert" style={{ background: 'var(--paper-dim)', marginBottom: 16 }}>
-        יצירת משתמשים וירטואליים (בוטים) עם שם/טלפון/אימייל ואווטאר שנוצרים ב-AI, ניחושים לכל המשחקים,
-        4-5 ריביוים, 20-30 לייקים (אהבתי) והצעות הימור לשחקנים אחרים — לפי אסטרטגיית הימור נבחרת.
-        <br /><small style={{ color: 'var(--muted)' }}>בוטים נוצרים <b>מושבתים כברירת מחדל</b> — סמנו אותם והפעילו. הם אינם מקבלים מיילים אמיתיים.</small>
+      <div style={{ marginBottom: 16, padding: '12px 16px', borderRadius: 10, background: 'repeating-linear-gradient(45deg, rgba(193,39,45,0.06), rgba(193,39,45,0.06) 12px, transparent 12px, transparent 24px)', border: '2px dashed var(--crimson)' }}>
+        <div style={{ fontWeight: 800, color: 'var(--crimson)', letterSpacing: 1 }}>🤖 מצב סימולציה — נתוני בדיקה בלבד</div>
+        <div style={{ marginTop: 4 }}>
+          יצירת משתמשים וירטואליים (בוטים) עם שם/טלפון/אימייל ואווטאר שנוצרים ב-AI, ניחושים, ריביוים, לייקים והצעות הימור — לפי אסטרטגיה.
+          <br /><small style={{ color: 'var(--muted)' }}>בוטים נוצרים <b>מושבתים כברירת מחדל</b>; מושבתים אינם מופיעים לשחקנים האמיתיים ואינם מקבלים מיילים. "מחק הכל" מסיר את כל הבוטים.</small>
+        </div>
       </div>
 
       <div style={{ display: 'grid', gap: 12, padding: 16, marginBottom: 20, background: 'var(--paper-pure)', border: '1px solid var(--paper-dim)', borderRadius: 12 }}>
@@ -195,13 +207,29 @@ function SimulateTab() {
         {msg && <div className={`alert ${msg.startsWith('✓') ? 'alert-success' : 'alert-error'}`}>{msg}</div>}
       </div>
 
-      <h3 style={{ margin: '8px 0' }}>בוטים ({list.length}) · פעילים {list.filter(u => u.enabled).length}</h3>
+      <h3 style={{ margin: '8px 0' }}>
+        בוטים ({list.length}) · פעילים {list.filter(u => u.enabled).length} · מושבתים {list.filter(u => !u.enabled).length}
+        <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--muted)', marginInlineStart: 10 }}>
+          {Object.entries(byStrategy).map(([k, v]) => `${k}: ${v}`).join(' · ')}
+        </span>
+      </h3>
+
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
+        <input placeholder="🔍 חיפוש שם/אימייל/אסטרטגיה" value={filter} onChange={e => setFilter(e.target.value)} style={inputStyle(240)} />
+        <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+          בחר אקראית
+          <input type="number" min={1} value={randomN} onChange={e => setRandomN(e.target.value)} style={inputStyle(80)} />
+          <button className="btn btn-sm btn-outline" onClick={randomSelect}>בחר {randomN}</button>
+        </span>
+        <span style={{ color: 'var(--muted)', fontSize: 12 }}>מוצגים: {shown.length}</span>
+      </div>
 
       {sel.size > 0 && (
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', padding: '10px 14px', marginBottom: 10, background: 'var(--paper-pure)', border: '1px solid var(--gold)', borderRadius: 10 }}>
           <b>{sel.size} נבחרו</b>
           <button className="btn btn-sm btn-pitch" onClick={() => bulk('enable')}>הפעל</button>
           <button className="btn btn-sm btn-outline" onClick={() => bulk('disable')}>השבת</button>
+          <button className="btn btn-sm btn-outline" style={{ color: 'var(--crimson)' }} onClick={() => { if (confirm(`למחוק ${sel.size} בוטים?`)) bulk('delete').then(() => setSel(new Set())); }}>מחק נבחרים</button>
           <button className="btn btn-sm btn-outline" onClick={() => setSel(new Set())}>נקה בחירה</button>
           <span style={{ borderInlineStart: '1px solid var(--paper-dim)', paddingInlineStart: 10, display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
             שנה ניחוש למשחק:
@@ -227,7 +255,7 @@ function SimulateTab() {
             </tr>
           </thead>
           <tbody>
-            {list.map(u => (
+            {shown.map(u => (
               <tr key={u.user_id} style={{ opacity: u.enabled ? 1 : 0.55, background: sel.has(u.user_id) ? 'var(--paper-dim)' : undefined }}>
                 <td><input type="checkbox" checked={sel.has(u.user_id)} onChange={() => toggleSel(u.user_id)} /></td>
                 <td style={{ fontWeight: 600, display: 'flex', gap: 8, alignItems: 'center' }}>

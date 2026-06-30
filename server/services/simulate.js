@@ -560,6 +560,12 @@ async function bulkAction({ ids, action, matchId, home, away }) {
     return { ok: true, action, affected: list.length };
   }
 
+  if (action === 'delete') {
+    // מוחק רק בוטים (בטיחות) — לא משתמשים אמיתיים
+    const r = await db.run(`DELETE FROM users WHERE id IN (${ph}) AND id IN (SELECT user_id FROM sim_users)`, [...list]);
+    return { ok: true, action, affected: r.affectedRows || 0 };
+  }
+
   if (action === 'rebet') {
     const mid = Number(matchId);
     if (!Number.isInteger(mid)) throw new Error('יש לבחור משחק');
