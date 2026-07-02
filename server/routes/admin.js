@@ -30,6 +30,7 @@ async function blockedByShabbat(res) {
   return false;
 }
 const { renderLeaderboardPng, sendLeaderboardReport, sendUserResultsReport } = require('../services/leaderboard-report');
+const { sendActivityReport } = require('../services/activity-report');
 const { seedScheduleItems } = require('../lib/schedule-items');
 const { seedFooterDocuments } = require('../lib/footer-content');
 const { normalizeId, normalizeDateTime, normalizeSpecialPopup, parseSpecialPopups, sortSpecialPopups } = require('../lib/special-popups');
@@ -1207,6 +1208,17 @@ router.post('/user-results/send', async (req, res) => {
   }
 });
 
+// שליחה ידנית של דוח פעילות יומי למנהלת
+router.post('/activity-report/send', async (req, res) => {
+  try {
+    const result = await sendActivityReport({ force: true });
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    console.error('admin/activity-report/send:', e);
+    res.status(500).json({ error: e.message || 'שגיאת שרת' });
+  }
+});
+
 // תצוגה מקדימה של התמונה שתצורף לדוח תוצאות המשתמשים
 router.get('/user-results/preview', async (req, res) => {
   try {
@@ -1620,7 +1632,11 @@ router.post('/matches', async (req, res) => {
         venue || null,
         id
       ]);
-      return res.json({ ok: true, id });
+      let bot_seed = null;
+      if (home_code && away_code) {
+        bot_seed = await simulate.seedOpenStagePredictions({ stage: stage || null }).catch(e => ({ error: e.message }));
+      }
+      return res.json({ ok: true, id, bot_seed });
     }
     // לנוקאאוט - מצא ID פנוי גבוה
     const last = await db.one('SELECT COALESCE(MAX(id), 0) AS m FROM matches');
@@ -1648,7 +1664,11 @@ router.post('/matches', async (req, res) => {
       k,
       venue || null
     ]);
-    res.json({ ok: true, id: newId });
+    let bot_seed = null;
+    if (home_code && away_code) {
+      bot_seed = await simulate.seedOpenStagePredictions({ stage: stage || null }).catch(e => ({ error: e.message }));
+    }
+    res.json({ ok: true, id: newId, bot_seed });
   } catch (e) {
     console.error('admin/add-match:', e);
     res.status(500).json({ error: 'שגיאת שרת' });
@@ -1843,7 +1863,11 @@ router.post('/simulate/:id/regenerate-avatar', async (req, res) => {
 router.post('/scan-fixtures-now', async (req, res) => {
   try {
     const changes = await scanAvailableFixturesFromESPN();
-    res.json({ ok: true, scanned: changes.length, changes });
+    const stages = [...new Set(changes.map(c => c.stage).filter(Boolean))];
+    const bot_seed = stages.length
+      ? await Promise.all(stages.map(stage => simulate.seedOpenStagePredictions({ stage }).catch(e => ({ stage, error: e.message }))))
+      : [];
+    res.json({ ok: true, scanned: changes.length, changes, bot_seed });
   } catch (e) {
     console.error('admin/scan-fixtures-now:', e);
     res.status(500).json({ error: 'שגיאת שרת' });

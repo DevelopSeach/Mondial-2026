@@ -1,5 +1,5 @@
 // קובץ ראשי של שרת מערכת ניחושי המונדיאל 2026 (MySQL 8)
-require('dotenv').config();
+try { require('dotenv').config(); } catch (e) { /* optional in this environment */ }
 const express = require('express');
 const cors = require('cors');
 const cron = require('node-cron');
@@ -9,6 +9,7 @@ const fs = require('fs');
 const db = require('./db');
 const { runDailyUpdate } = require('./services/scraper');
 const { sendLeaderboardReport, sendUserResultsReport } = require('./services/leaderboard-report');
+const { sendActivityReport } = require('./services/activity-report');
 const { sendNextDayPredictionEmails, sendPrematchPredictionEmails } = require('./services/prediction-reminders');
 const { getDatePartsInTz, getShabbatState } = require('./lib/shabbat');
 const { activeThemeAssetsDir, themeDir, DEFAULT_THEME, activeThemeName } = require('./lib/themes');
@@ -60,6 +61,11 @@ function isTruthySetting(value) {
   return ['1', 'true', 'on', 'yes'].includes(String(value || '').toLowerCase());
 }
 
+function isEnabledByDefault(value) {
+  if (value == null || String(value).trim() === '') return true;
+  return isTruthySetting(value);
+}
+
 async function runScheduledEmailJobs() {
   const now = getDatePartsInTz('Asia/Jerusalem');
   if (now.minute !== 0) return;
@@ -67,6 +73,8 @@ async function runScheduledEmailJobs() {
   const settings = await readSettingsMap([
     'shabbat_mode',
     'leaderboard_report_last_sent_ymd',
+    'send_activity_report_to_manager',
+    'activity_report_last_sent_ymd',
     'send_results_to_users',
     'send_results_hour',
     'results_users_last_sent_ymd'
@@ -92,6 +100,23 @@ async function runScheduledEmailJobs() {
       }
     } catch (e) {
       console.error('   ✗ דוח מנהל נכשל:', e.message);
+    }
+  }
+
+  if (isEnabledByDefault(settings.send_activity_report_to_manager)) {
+    if (now.hour === 6 && now.minute === 10 && settings.activity_report_last_sent_ymd !== now.ymd) {
+      console.log('⏰ שליחת דוח פעילות יומי למנהלת...');
+      try {
+        const result = await sendActivityReport();
+        if (result?.skipped) {
+          console.log(`   ↷ דוח פעילות לא נשלח (${result.skipped})`);
+        } else {
+          await writeSetting('activity_report_last_sent_ymd', now.ymd);
+          console.log(`   ✓ דוח פעילות נשלח ל-${result.to}`);
+        }
+      } catch (e) {
+        console.error('   ✗ דוח פעילות נכשל:', e.message);
+      }
     }
   }
 

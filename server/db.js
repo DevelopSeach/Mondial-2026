@@ -5,7 +5,7 @@
 // סכמת הטבלאות נמצאת ב-./schema.js ונטענת על-ידי `npm run db:init`
 // (לא נוצרת אוטומטית בהרצת השרת - כך שאי-אפשר ליצור DB ריק בטעות בפרודקשן)
 
-require('dotenv').config();
+try { require('dotenv').config(); } catch (e) { /* optional in this environment */ }
 const mysql = require('mysql2/promise');
 
 const config = {

@@ -157,10 +157,11 @@ async function seed() {
     ['smtp_security',     process.env.SMTP_SECURITY || 'STARTTLS'],
     ['smtp_user',         process.env.SMTP_USER || 'mon2026@reports.seach.co.il'],
     ['smtp_password',     process.env.SMTP_PASSWORD || '^kdebr%cuNZ65Z'],
-    ['smtp_manager_email', process.env.SMTP_MANAGER_EMAIL || 'aviva@seach.co.il'],
+    ['smtp_manager_email', process.env.SMTP_MANAGER_EMAIL || 'mon4all@hinbit.com'],
     ['email_user_delivery_mode', process.env.EMAIL_USER_DELIVERY_MODE || 'smtp'],
     ['gmail_app_user',     process.env.GMAIL_APP_USER || ''],
     ['gmail_app_password', process.env.GMAIL_APP_PASSWORD || ''],
+    ['send_activity_report_to_manager', process.env.SEND_ACTIVITY_REPORT_TO_MANAGER || '1'],
     ['send_results_to_users', process.env.SEND_RESULTS_TO_USERS || '0'],
     ['send_results_hour', process.env.SEND_RESULTS_HOUR || '19'],
     ['send_results_audience', process.env.SEND_RESULTS_AUDIENCE || 'all']

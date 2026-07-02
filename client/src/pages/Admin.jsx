@@ -1787,6 +1787,9 @@ function SettingsTab() {
 
   const dirty = JSON.stringify(settings) !== JSON.stringify(draft);
   const sendResultsEnabled = ['1', 'true', 'on', 'yes'].includes(String(draft.send_results_to_users || '').toLowerCase());
+  const sendActivityEnabled = draft.send_activity_report_to_manager === undefined
+    ? true
+    : ['1', 'true', 'on', 'yes'].includes(String(draft.send_activity_report_to_manager || '').toLowerCase());
 
   return (
     <div style={{ maxWidth: 720 }}>
@@ -2003,7 +2006,7 @@ function SettingsTab() {
               type="email"
               value={draft.smtp_manager_email ?? ''}
               onChange={e => upd('smtp_manager_email', e.target.value)}
-              placeholder="aviva@seach.co.il"
+              placeholder="mon4all@hinbit.com"
             />
           </div>
           <div className="field">
@@ -2038,7 +2041,37 @@ function SettingsTab() {
         </div>
         <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 8 }}>
           כשבוחרים "חשבון Gmail", הודעות למשתתפים יישלחו דרך smtp.gmail.com עם כתובת ה-Gmail וסיסמת האפליקציה
-          (יש להפעיל אימות דו-שלבי בחשבון Google וליצור "סיסמת אפליקציה"). דוח המנהלת ימשיך לצאת דרך SMTP של seach.co.il.
+          (יש להפעיל אימות דו-שלבי בחשבון Google וליצור "סיסמת אפליקציה"). דוח המנהלת ימשיך לצאת דרך ה-SMTP שהוגדר.
+        </div>
+      </SettingsCard>
+
+      <SettingsCard title="דוח פעילות יומי למנהלת">
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={sendActivityEnabled}
+            onChange={(e) => upd('send_activity_report_to_manager', e.target.checked ? '1' : '0')}
+          />
+          <span>שלח דוח פעילות יומי למנהלת שליחות</span>
+        </label>
+        <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 8, marginBottom: 0 }}>
+          הדוח כולל כניסות למערכת, ניחושים, שינויי ניחוש, ריביוים, לייקים והימורי שיחים. ברירת המחדל היא פעיל.
+        </p>
+        <div style={{ marginTop: 12 }}>
+          <button
+            className="btn btn-sm btn-gold"
+            onClick={async () => {
+              setErr(''); setOk('');
+              try {
+                const { data } = await api.post('/admin/activity-report/send');
+                setOk(`דוח פעילות יומי נשלח ל-${data.to} (${data.dateLabel})`);
+              } catch (e) {
+                setErr(errMsg(e));
+              }
+            }}
+          >
+            שלח דוח פעילות עכשיו
+          </button>
         </div>
       </SettingsCard>
 
@@ -2497,7 +2530,7 @@ function MessagesTab() {
       setResultsPreviewBusy(true);
       setResultsPreviewErr('');
       try {
-        const { data } = await api.get('/admin/user-results/preview', { responseType: 'blob' });
+        const { data } = await api.get(`/admin/user-results/preview?_ts=${Date.now()}`, { responseType: 'blob' });
         currentUrl = URL.createObjectURL(data);
         if (alive) {
           setResultsPreviewUrl(currentUrl);
@@ -2553,7 +2586,7 @@ function MessagesTab() {
     setResultsPreviewBusy(true);
     setResultsPreviewErr('');
     try {
-      const { data } = await api.get('/admin/user-results/preview', { responseType: 'blob' });
+      const { data } = await api.get(`/admin/user-results/preview?_ts=${Date.now()}`, { responseType: 'blob' });
       const nextUrl = URL.createObjectURL(data);
       setResultsPreviewUrl((prev) => {
         if (prev) URL.revokeObjectURL(prev);

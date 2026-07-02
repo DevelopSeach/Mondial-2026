@@ -303,7 +303,7 @@ async function upsertFixture(fixture) {
       fixture.status,
       existing.id
     ]);
-    return { id: existing.id, action: 'updated' };
+    return { id: existing.id, stage: fixture.stage, action: 'updated' };
   }
 
   if (!canInsertFixture(fixture)) return null;
@@ -335,7 +335,7 @@ async function upsertFixture(fixture) {
     fixture.venue || null,
     fixture.status || 'scheduled'
   ]);
-  return { id: newId, action: 'inserted' };
+  return { id: newId, stage: fixture.stage, action: 'inserted' };
 }
 
 async function fetchESPNEvents() {

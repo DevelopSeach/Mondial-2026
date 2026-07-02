@@ -12,7 +12,6 @@ const { getShabbatState } = require('../lib/shabbat');
 
 const TEXT_FONT_STACK = 'Noto Sans Hebrew, DejaVu Sans, Liberation Sans, sans-serif';
 const LEADERBOARD_REPORT_LIMIT = 10;
-const HEADER_LOGO_PATH = path.join(__dirname, '..', '..', 'resources', 'themes', 'seach', 'logo-header.png');
 const BADGE_EMOJI_SVG_CODES = {
   crown: '1f451',
   leader: '1f3c6',
@@ -26,7 +25,6 @@ const BADGE_EMOJI_SVG_CODES = {
   prophet: '2b50'
 };
 const badgeEmojiSvgDataCache = new Map();
-let headerLogoDataUriCache = null;
 const USER_RESULTS_SETTING_KEYS = [
   'smtp_server', 'smtp_port', 'smtp_security', 'smtp_user', 'smtp_password',
   'smtp_manager_email', 'email_user_delivery_mode', 'gmail_app_user', 'gmail_app_password',
@@ -156,14 +154,6 @@ function badgeEmojiSvgDataUri(badgeId) {
   return badgeEmojiSvgDataCache.get(code);
 }
 
-function headerLogoDataUri() {
-  if (headerLogoDataUriCache) return headerLogoDataUriCache;
-  if (!fs.existsSync(HEADER_LOGO_PATH)) return null;
-  const file = fs.readFileSync(HEADER_LOGO_PATH);
-  headerLogoDataUriCache = `data:image/png;base64,${file.toString('base64')}`;
-  return headerLogoDataUriCache;
-}
-
 function badgeHtmlPills(badges) {
   const ordered = normalizeBadgeList(badges);
   if (!ordered.length) return '<span style="color:#8aa69a">—</span>';
@@ -252,10 +242,6 @@ function buildLeaderboardSvg(rows, dateLabel, limit) {
   parts.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`);
   parts.push(`<rect width="${W}" height="${H}" fill="#0b3d2e"/>`);
   parts.push(`<rect x="0" y="0" width="${W}" height="96" fill="#08311f"/>`);
-  const logoDataUri = headerLogoDataUri();
-  if (logoDataUri) {
-    parts.push(`<image href="${logoDataUri}" x="${Math.round(W / 2 - 195)}" y="-3" width="390" height="141" preserveAspectRatio="xMidYMid meet" />`);
-  }
   parts.push(`<text x="28" y="28" font-family="${TEXT_FONT_STACK}" font-size="16" fill="#cfe8d8" text-anchor="start">בס״ד</text>`);
   parts.push(`<text x="${W - 30}" y="50" font-family="${TEXT_FONT_STACK}" font-size="34" font-weight="bold" fill="#ffd700" text-anchor="end">טבלת המצטיינים</text>`);
   parts.push(`<text x="${W - 30}" y="80" font-family="${TEXT_FONT_STACK}" font-size="18" fill="#cfe8d8" text-anchor="end">מונדיאל 2026 · ${xmlEscape(dateLabel)}</text>`);
@@ -425,14 +411,14 @@ async function sendUserResultsReport(options = {}) {
         text: [
           `מצורפת תמונת טבלת המצטיינים של 10 המובילים, כולל תגי הישג, נכון לתאריך ${dateLabel}.`,
           '',
-          'לכניסה לאתר - www.mon2026.seach.co.il'
+          'לכניסה לאתר - מונדיאל 2026'
         ].join('\n'),
         html: buildLeaderboardEmailHtml({
           dateLabel,
           topRows,
           intro: 'מצורפת תמונת <strong>טבלת המצטיינים</strong> של 10 המובילים, כולל <strong>תגי הישג</strong>',
           showImage: true,
-          footerText: 'לכניסה לאתר - www.mon2026.seach.co.il'
+          footerText: 'לכניסה לאתר - מונדיאל 2026'
         }),
         attachments: [{ filename, content: png, contentType: 'image/png', cid: 'leaderboard' }]
       });

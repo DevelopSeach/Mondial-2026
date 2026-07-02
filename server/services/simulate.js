@@ -118,6 +118,27 @@ const rnd = (n) => Math.floor(Math.random() * n);
 const pick = (arr) => arr[rnd(arr.length)];
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+const PLACEHOLDER_RE = /(TBD|to be decided|winner|loser|מנצחת|מפסידה|מקום|טרם|ייקבע|תיקבע)/i;
+
+function hasRealTeams(m) {
+  if (!m || !m.home_code || !m.away_code) return false;
+  const labels = [
+    m.home_label_he, m.home_label_en, m.home_label_ar,
+    m.away_label_he, m.away_label_en, m.away_label_ar,
+    m.home, m.away
+  ].filter(Boolean).join(' ');
+  return !PLACEHOLDER_RE.test(labels);
+}
+
+function realTeamsSql(alias = 'm') {
+  return `
+    ${alias}.home_code IS NOT NULL AND ${alias}.away_code IS NOT NULL
+    AND COALESCE(${alias}.home_label_he, '') NOT REGEXP 'TBD|Winner|Loser|מנצחת|מפסידה|מקום|טרם|ייקבע|תיקבע'
+    AND COALESCE(${alias}.home_label_en, '') NOT REGEXP 'TBD|Winner|Loser|To Be Decided'
+    AND COALESCE(${alias}.away_label_he, '') NOT REGEXP 'TBD|Winner|Loser|מנצחת|מפסידה|מקום|טרם|ייקבע|תיקבע'
+    AND COALESCE(${alias}.away_label_en, '') NOT REGEXP 'TBD|Winner|Loser|To Be Decided'
+  `;
+}
 
 let schemaReady = false;
 async function ensureSchema() {
@@ -349,32 +370,45 @@ function scoreByStrategy(mode) {
 }
 
 // ───────────── יצירת ריביוים (טקסט עברי) ─────────────
-function fallbackReview(m) {
+function fallbackReview(m, salt = 0) {
+  const home = m.home;
+  const away = m.away;
   const opts = [
-    `משחק צפוי בין ${m.home} ל${m.away}. אני מהמר על משחק צמוד עם הזדמנויות לשני הצדדים.`,
-    `${m.home} נראית חזקה יותר על הנייר, אבל ${m.away} יכולה להפתיע. ריביו קצר לפני המשחק.`,
-    `קלאסיקה אמיתית! ${m.home} מול ${m.away} — צריך לראות מי ייקח את השליטה בקו האמצע.`,
-    `הניחוש שלי: משחק עם שערים. ${m.home} ו${m.away} שתיהן אוהבות לתקוף.`
+    `אני רואה פה משחק עצבני: ${home} תנסה ללחוץ מוקדם, ${away} תחפש את הרגע שלה במעבר.`,
+    `${home} מול ${away}: לא צריך הרבה מילים, מי שתנצח את האמצע תיקח את המשחק.`,
+    `יש פה ריח של ערב דרמטי. ${home} מגיעה עם משקל על הכתפיים, ו${away} יכולה להפוך כל טעות לסיפור.`,
+    `וואלה ${home}-${away} זה מסוג המשחקים שנפתח רגוע ואז פתאום מתפוצץ.`,
+    `${home} צריכה סבלנות, ${away} צריכה דיוק. בעיניי זה הולך להיות הרבה יותר צמוד ממה שחושבים.`,
+    `שתי נבחרות, תשעים דקות, מעט מקום לברוח. ${home} ו${away} ימדדו היום בעיקר באופי.`,
+    `קצר וחד: אם ${away} לא תסגור את האגפים, ${home} תעניש.`,
+    `לא משחק של רעש, משחק של פרטים קטנים. מסירה אחת בין ${home} ל${away} יכולה לשנות הכל.`,
+    `יאללה, זה מרגיש כמו משחק של שער אחד לכאן או לכאן. ${home} ו${away} לא יקבלו מתנות.`,
+    `${home} באה לבנות לאט, ${away} באה לעקוץ מהר. מעניין מי תגרור את מי לסגנון שלה.`
   ];
-  return pick(opts);
+  return opts[Math.abs((Number(m.id) || 0) + salt + rnd(opts.length)) % opts.length];
 }
 
 async function buildReviews(persona, matches) {
   const ai = await chatJSON(
     `אתה ${persona.name}, אוהד/ת כדורגל ישראלי/ת. כתוב ריביוים קצרים בעברית בגוף ראשון, סגנון: ${persona.style}. החזר JSON בלבד.`,
     `כתוב ריביו קצר (1-2 משפטים) לכל משחק מהרשימה. החזר JSON: {"reviews":[{"i":0,"text":"..."}, ...]}.
+כל ריביו חייב להיות שונה בשפה ובקצב. אסור להשתמש בתבניות חוזרות או משפטים כמו "שתיהן אוהבות לתקוף", "משחק צפוי", "חזקה על הנייר", או "ריביו קצר לפני המשחק".
+ערבב סגנונות: חלק סלנג ישראלי טבעי, חלק פיוטי, חלק קצר וחד, חלק טקטי. אל תזכיר משחקים בלי שמות נבחרות אמיתיים.
 משחקים: ${matches.map((m, i) => `${i}: ${m.home} נגד ${m.away}`).join(' | ')}`
   );
   const map = {};
   if (ai && Array.isArray(ai.reviews)) for (const r of ai.reviews) if (Number.isInteger(r.i)) map[r.i] = String(r.text || '').slice(0, 600);
-  return matches.map((m, i) => map[i] || fallbackReview(m));
+  return matches.map((m, i) => map[i] || fallbackReview(m, i));
 }
 
 // ───────────── שאילתות עזר ─────────────
 async function loadMatches() {
   return db.query(`
-    SELECT m.id, m.status, m.kickoff,
-           (m.home_code IS NOT NULL AND m.away_code IS NOT NULL) AS real_teams,
+    SELECT m.id, m.status, m.kickoff, m.stage,
+           m.home_code, m.away_code,
+           m.home_label_he, m.home_label_en, m.home_label_ar,
+           m.away_label_he, m.away_label_en, m.away_label_ar,
+           (${realTeamsSql('m')}) AS real_teams,
            COALESCE(ht.name_he, m.home_label_he, m.home_code, 'בית') AS home,
            COALESCE(at.name_he, m.away_label_he, m.away_code, 'חוץ') AS away
     FROM matches m
@@ -431,6 +465,7 @@ async function createOne(strategy, options) {
   const summary = { user_id: userId, name: displayName, email, phone, strategy, predictions: 0, reviews: 0, likes: 0, suggestions: 0, avatar: !!profileUrl };
   const mode = STRATEGIES[strategy]?.score || 'uniform';
   const matches = await loadMatches();
+  const realMatches = matches.filter(hasRealTeams);
 
   // אסטרטגיות "בלונדיני"/"ברונטית": בוחר משתמש חי אקראי ומהמר הפוך ממנו
   const shadowStrat = strategy === 'blonde' || strategy === 'brownete';
@@ -445,15 +480,20 @@ async function createOne(strategy, options) {
       persona.shadow_user_id = shadow.id; persona.shadow_name = shadow.name;
       persona.bio = `${persona.bio || ''} — מהמר הפוך מ${shadow.name}${strategy === 'brownete' ? ' (עם שינוי שערים)' : ''}`.trim();
       await db.run('UPDATE sim_users SET persona = ? WHERE user_id = ?', [JSON.stringify({ ...persona, phone, email }), userId]);
-      const rows = await db.query('SELECT match_id, home_score, away_score FROM predictions WHERE user_id = ?', [shadow.id]);
+      const rows = await db.query(`
+        SELECT p.match_id, p.home_score, p.away_score
+        FROM predictions p
+        JOIN matches m ON m.id = p.match_id
+        WHERE p.user_id = ? AND ${realTeamsSql('m')}
+      `, [shadow.id]);
       shadowPreds = new Map(rows.map(r => [r.match_id, r]));
     }
   }
 
   // ניחושים — מספר אקראי בין 60 ל-82 משחקים (כך שלחלק מהבוטים חסרים ניחושים)
-  if (options.bets !== false && matches.length) {
-    const target = Math.min(matches.length, 60 + rnd(23)); // 60..82
-    const order = matches.slice();
+  if (options.bets !== false && realMatches.length) {
+    const target = Math.min(realMatches.length, 60 + rnd(23)); // 60..82, רק משחקים עם נבחרות אמיתיות
+    const order = realMatches.slice();
     for (let i = order.length - 1; i > 0; i -= 1) { const j = rnd(i + 1); [order[i], order[j]] = [order[j], order[i]]; }
     const chosenMatches = order.slice(0, target);
     for (const m of chosenMatches) {
@@ -474,8 +514,7 @@ async function createOne(strategy, options) {
   }
 
   // ריביוים — 4-5 משחקים, רק עם נבחרות אמיתיות (לא משחקי placeholder של נוקאאוט)
-  if (options.reviews !== false && matches.length) {
-    const realMatches = matches.filter(m => Number(m.real_teams));
+  if (options.reviews !== false && realMatches.length) {
     const pool = realMatches.filter(m => m.status !== 'finished');
     const src = (pool.length >= 5 ? pool : realMatches).slice();
     const chosen = [];
@@ -676,7 +715,10 @@ async function bulkAction({ ids, action, matchId, home, away }) {
   if (action === 'rebet') {
     const mid = Number(matchId);
     if (!Number.isInteger(mid)) throw new Error('יש לבחור משחק');
-    const match = await db.one('SELECT id FROM matches WHERE id = ?', [mid]);
+    const match = await db.one(`
+      SELECT id FROM matches m
+      WHERE id = ? AND ${realTeamsSql('m')}
+    `, [mid]);
     if (!match) throw new Error('משחק לא נמצא');
     const fixed = Number.isInteger(Number(home)) && Number.isInteger(Number(away));
     let changed = 0;
@@ -775,7 +817,8 @@ async function organicRebet(bot, lockH) {
   const rows = await db.query(
     `SELECT m.id, m.kickoff FROM matches m
      JOIN predictions p ON p.match_id = m.id AND p.user_id = ?
-     WHERE m.status <> 'finished' ORDER BY RAND() LIMIT 12`, [bot.user_id]);
+     WHERE m.status <> 'finished' AND ${realTeamsSql('m')}
+     ORDER BY RAND() LIMIT 12`, [bot.user_id]);
   for (const m of rows) {
     if (Date.now() >= kickoffMs(m.kickoff) - lockH * 3600 * 1000) continue; // נעול
     const [h, a] = scoreByStrategy(STRATEGIES[bot.strategy]?.score || 'uniform');
@@ -791,16 +834,62 @@ async function organicRebet(bot, lockH) {
 async function organicReview(bot) {
   const m = await db.one(`SELECT m.id, COALESCE(ht.name_he, m.home_label_he, m.home_code) AS home, COALESCE(at.name_he, m.away_label_he, m.away_code) AS away
     FROM matches m LEFT JOIN teams ht ON ht.code=m.home_code LEFT JOIN teams at ON at.code=m.away_code
-    WHERE m.status <> 'finished' AND m.home_code IS NOT NULL AND m.away_code IS NOT NULL
+    WHERE m.status <> 'finished' AND ${realTeamsSql('m')}
       AND NOT EXISTS (SELECT 1 FROM match_reviews r WHERE r.match_id=m.id AND r.user_id=?)
     ORDER BY RAND() LIMIT 1`, [bot.user_id]);
   if (!m) return 0;
   await db.run(
     `INSERT INTO match_reviews (user_id, match_id, body, status) VALUES (?, ?, ?, 'published')
      ON DUPLICATE KEY UPDATE body=VALUES(body), status='published'`,
-    [bot.user_id, m.id, fallbackReview(m)]
+    [bot.user_id, m.id, fallbackReview(m, bot.user_id)]
   );
   return 1;
+}
+
+async function seedOpenStagePredictions(opts = {}) {
+  await ensureSchema();
+  const lockH = Number(await simSetting('lock_hours_before', 1)) || 1;
+  const stage = opts.stage ? String(opts.stage) : null;
+  const stageClause = stage ? 'AND m.stage = ?' : '';
+  const params = stage ? [stage] : [];
+  const matches = await db.query(`
+    SELECT m.id, m.kickoff, m.status
+    FROM matches m
+    WHERE m.status <> 'finished'
+      AND ${realTeamsSql('m')}
+      ${stageClause}
+    ORDER BY m.kickoff ASC
+  `, params);
+  const openMatches = matches.filter(m => Date.now() < kickoffMs(m.kickoff) - lockH * 3600 * 1000);
+  const bots = await db.query('SELECT user_id, strategy FROM sim_users WHERE enabled = 1');
+  let inserted = 0;
+  let skippedExisting = 0;
+  let skippedLocked = matches.length - openMatches.length;
+  for (const bot of bots) {
+    const mode = STRATEGIES[bot.strategy]?.score || 'uniform';
+    for (const m of openMatches) {
+      const exists = await db.one('SELECT 1 AS x FROM predictions WHERE user_id = ? AND match_id = ?', [bot.user_id, m.id]);
+      if (exists) { skippedExisting += 1; continue; }
+      const [h, a] = scoreByStrategy(mode);
+      await db.run(
+        `INSERT INTO predictions (user_id, match_id, home_score, away_score, points, submitted_at)
+         VALUES (?, ?, ?, ?, 0, CURRENT_TIMESTAMP)
+         ON DUPLICATE KEY UPDATE home_score = home_score`,
+        [bot.user_id, m.id, h, a]
+      );
+      inserted += 1;
+    }
+  }
+  return {
+    ok: true,
+    stage,
+    bots: bots.length,
+    matches: matches.length,
+    open_matches: openMatches.length,
+    inserted,
+    skipped_existing: skippedExisting,
+    skipped_locked: skippedLocked
+  };
 }
 
 async function organicVote(bot) {
@@ -884,4 +973,4 @@ async function organicTick(opts = {}) {
   return { acted, bots: max };
 }
 
-module.exports = { startBatch, listSim, removeSim, removeAll, strategies, sectorsList, ensureSchema, getOne, updateOne, setEnabled, bulkAction, regenerateAvatar, history, organicTick, acceptBetTick };
+module.exports = { startBatch, listSim, removeSim, removeAll, strategies, sectorsList, ensureSchema, getOne, updateOne, setEnabled, bulkAction, regenerateAvatar, history, organicTick, acceptBetTick, seedOpenStagePredictions };
