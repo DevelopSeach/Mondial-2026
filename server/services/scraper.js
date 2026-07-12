@@ -145,6 +145,34 @@ function normalizeVenue(value) {
   return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
+function stageUsesFixedSlots(stage) {
+  return stage && stage !== 'group';
+}
+
+function stageSortValue(row, stage) {
+  if (stageUsesFixedSlots(stage)) return Number(row.id) || 0;
+  const ms = new Date(row.kickoff).getTime();
+  return Number.isFinite(ms) ? ms : Number.MAX_SAFE_INTEGER;
+}
+
+function sortStageRows(rows, stage) {
+  return [...rows].sort((a, b) => {
+    const av = stageSortValue(a, stage);
+    const bv = stageSortValue(b, stage);
+    if (av !== bv) return av - bv;
+    return (a.id || 0) - (b.id || 0);
+  });
+}
+
+function sortStageFixtures(items) {
+  return [...items].sort((a, b) => {
+    const ams = new Date(a.fixture.kickoff).getTime();
+    const bms = new Date(b.fixture.kickoff).getTime();
+    if (Number.isFinite(ams) && Number.isFinite(bms) && ams !== bms) return ams - bms;
+    return String(a.eventId || '').localeCompare(String(b.eventId || ''));
+  });
+}
+
 function normalizeText(value) {
   return String(value || '')
     .trim()
@@ -226,12 +254,30 @@ function eventToFixture(ev) {
   };
 }
 
-async function findFixtureMatch(fixture) {
+async function getStageRows(stage) {
+  return db.query(`
+    SELECT id, kickoff, status, home_code, away_code, stage, venue,
+      home_label_he, home_label_en, home_label_ar,
+      away_label_he, away_label_en, away_label_ar,
+      home_score, away_score
+    FROM matches
+    WHERE stage = ?
+  `, [stage]);
+}
+
+async function findFixtureMatch(fixture, options = {}) {
   if (!fixture) return null;
 
-  if (fixture.homeCode && fixture.awayCode) {
+  const byStageRaw = await getStageRows(fixture.stage);
+  if (!byStageRaw.length) return null;
+  const byStage = sortStageRows(byStageRaw, fixture.stage);
+
+  if (!stageUsesFixedSlots(fixture.stage) && fixture.homeCode && fixture.awayCode) {
     const byTeams = await db.one(`
-      SELECT id, kickoff, status, home_code, away_code, stage, venue
+      SELECT id, kickoff, status, home_code, away_code, stage, venue,
+        home_label_he, home_label_en, home_label_ar,
+        away_label_he, away_label_en, away_label_ar,
+        home_score, away_score
       FROM matches
       WHERE (home_code = ? AND away_code = ?) OR (home_code = ? AND away_code = ?)
       ORDER BY kickoff ASC, id ASC
@@ -240,15 +286,6 @@ async function findFixtureMatch(fixture) {
     if (byTeams) return byTeams;
   }
 
-  const byStage = await db.query(`
-    SELECT id, kickoff, status, home_code, away_code, stage, venue,
-      home_label_en, away_label_en
-    FROM matches
-    WHERE stage = ?
-    ORDER BY kickoff ASC, id ASC
-  `, [fixture.stage]);
-  if (!byStage.length) return null;
-
   const targetMs = new Date(fixture.kickoff).getTime();
   const fixtureHome = normalizeText(fixture.homeLabelEn || fixture.homeLabelHe || '');
   const fixtureAway = normalizeText(fixture.awayLabelEn || fixture.awayLabelHe || '');
@@ -256,17 +293,30 @@ async function findFixtureMatch(fixture) {
 
   const scored = byStage.map((row) => {
     let score = Math.abs(new Date(row.kickoff).getTime() - targetMs);
+    if (stageUsesFixedSlots(fixture.stage) && Number.isInteger(options.stageOrdinal) && Number.isInteger(row.id)) {
+      const stageRows = byStage;
+      const rowOrdinal = stageRows.findIndex((candidate) => candidate.id === row.id);
+      if (rowOrdinal >= 0) {
+        score += Math.abs(rowOrdinal - options.stageOrdinal) * 7 * 24 * 60 * 60 * 1000;
+      }
+    }
     if (venueKey && normalizeVenue(row.venue) === venueKey) score -= 30 * 60 * 1000;
     if (fixtureHome && normalizeText(row.home_label_en) === fixtureHome) score -= 60 * 60 * 1000;
     if (fixtureAway && normalizeText(row.away_label_en) === fixtureAway) score -= 60 * 60 * 1000;
+    if (fixture.homeCode && fixture.awayCode && row.home_code && row.away_code) {
+      const sameDirection = row.home_code === fixture.homeCode && row.away_code === fixture.awayCode;
+      const swapped = row.home_code === fixture.awayCode && row.away_code === fixture.homeCode;
+      if (sameDirection) score -= 14 * 24 * 60 * 60 * 1000;
+      else if (swapped) score -= 12 * 24 * 60 * 60 * 1000;
+    }
     return { row, score };
   });
   scored.sort((a, b) => a.score - b.score);
   return scored[0]?.row || null;
 }
 
-async function upsertFixture(fixture) {
-  const existing = await findFixtureMatch(fixture);
+async function upsertFixture(fixture, options = {}) {
+  const existing = await findFixtureMatch(fixture, options);
   if (existing) {
     const currentHomeCode = existing.home_code || null;
     const currentAwayCode = existing.away_code || null;
@@ -350,12 +400,11 @@ async function fetchESPNEvents() {
 async function findFallbackMatch({ stage, kickoff, venue }) {
   const stageName = stage || detectStageFromDate(kickoff);
   if (!stageName) return null;
-  const rows = await db.query(`
+  const rows = sortStageRows((await db.query(`
     SELECT id, kickoff, status, home_code, away_code, venue
     FROM matches
     WHERE stage = ? AND status != 'finished'
-    ORDER BY kickoff ASC, id ASC
-  `, [stageName]);
+  `, [stageName])), stageName);
   if (!rows.length) return null;
   const targetMs = new Date(kickoff).getTime();
   const venueKey = normalizeVenue(venue);
@@ -374,6 +423,20 @@ async function scrapeFromESPN() {
   // Query the full tournament window so a single run can settle any finished game.
   const updated = [];
   const events = await fetchESPNEvents();
+  const fixtureOrdinals = new Map();
+  const fixturesByStage = new Map();
+  for (const ev of events) {
+    const fixture = eventToFixture(ev);
+    if (!fixture) continue;
+    const list = fixturesByStage.get(fixture.stage) || [];
+    list.push({ eventId: ev.id, fixture });
+    fixturesByStage.set(fixture.stage, list);
+  }
+  for (const [stage, items] of fixturesByStage.entries()) {
+    sortStageFixtures(items).forEach((item, index) => {
+      fixtureOrdinals.set(String(item.eventId), { stage, index });
+    });
+  }
   for (const ev of events) {
     const comp = ev.competitions && ev.competitions[0];
     if (!comp || !Array.isArray(comp.competitors)) continue;
@@ -385,17 +448,11 @@ async function scrapeFromESPN() {
     const awayCode = teamCode(away.team && away.team.displayName);
     const eventVenue = comp.venue && comp.venue.fullName;
     const eventDate = ev.date || comp.date;
+    const fixture = eventToFixture(ev);
+    const stageOrdinal = fixtureOrdinals.get(String(ev.id))?.index;
 
     let match = null;
-    if (homeCode && awayCode) {
-      // המשחק ב-DB לפי הצמד בכל סדר (ESPN לעיתים מציג בית/חוץ הפוך מהזריעה).
-      // לא הופכים את בית/חוץ ב-DB (כדי לא להפוך ניחושים קיימים) — רק מתאימים את הכיוון.
-      match = await db.one(`
-        SELECT id, kickoff, status, home_code, away_code, stage, venue FROM matches
-        WHERE (home_code = ? AND away_code = ?) OR (home_code = ? AND away_code = ?)
-        ORDER BY kickoff ASC LIMIT 1
-      `, [homeCode, awayCode, awayCode, homeCode]);
-    }
+    if (fixture) match = await findFixtureMatch(fixture, { stageOrdinal });
     if (!match) {
       match = await findFallbackMatch({
         stage: detectStageFromDate(eventDate),
@@ -427,12 +484,13 @@ async function scrapeFromESPN() {
     const as = parseInt(away.score, 10);
     // state: 'pre' (not started) | 'in' (live) | 'post' (final)
     const state = comp.status && comp.status.type && comp.status.type.state;
-    if (match.status !== 'finished' && state !== 'pre' && Number.isInteger(hs) && Number.isInteger(as)) {
+    if (state !== 'pre' && Number.isInteger(hs) && Number.isInteger(as)) {
       const status = state === 'post' ? 'finished' : 'live';
       // התאמת התוצאה לכיוון ה-DB (אם הפוך — מחליפים)
       const dbHome = sameOrientation ? hs : as;
       const dbAway = sameOrientation ? as : hs;
-      if (await updateMatchScore(match.id, dbHome, dbAway, status)) {
+      const shouldUpdateScore = match.home_score !== dbHome || match.away_score !== dbAway || match.status !== status;
+      if (shouldUpdateScore && await updateMatchScore(match.id, dbHome, dbAway, status)) {
         const homeLabel = match.home_code || match.home_label_en || match.home_label_he || `match-${match.id}`;
         const awayLabel = match.away_code || match.away_label_en || match.away_label_he || `match-${match.id}`;
         updated.push({ id: match.id, score: `${homeLabel} ${dbHome}-${dbAway} ${awayLabel}`, status });
@@ -444,12 +502,21 @@ async function scrapeFromESPN() {
 
 async function scanAvailableFixturesFromESPN() {
   const events = await fetchESPNEvents();
-  const changes = [];
+  const stageBuckets = new Map();
   for (const ev of events) {
     const fixture = eventToFixture(ev);
     if (!fixture) continue;
-    const change = await upsertFixture(fixture);
-    if (change) changes.push(change);
+    const list = stageBuckets.get(fixture.stage) || [];
+    list.push({ eventId: ev.id, fixture });
+    stageBuckets.set(fixture.stage, list);
+  }
+  const changes = [];
+  for (const [, items] of stageBuckets.entries()) {
+    const ordered = sortStageFixtures(items);
+    for (let i = 0; i < ordered.length; i += 1) {
+      const change = await upsertFixture(ordered[i].fixture, { stageOrdinal: i });
+      if (change) changes.push(change);
+    }
   }
   return changes;
 }
@@ -504,4 +571,4 @@ async function runDailyUpdate() {
   }
 }
 
-module.exports = { runDailyUpdate, scanAvailableFixturesFromESPN, updateMatchScore, teamCode };
+module.exports = { runDailyUpdate, scrapeFromESPN, scanAvailableFixturesFromESPN, updateMatchScore, teamCode };
