@@ -7,7 +7,7 @@ const path = require('path');
 const fs = require('fs');
 
 const db = require('./db');
-const { runDailyUpdate } = require('./services/scraper');
+const { runDailyUpdate, scanAvailableFixturesFromESPN } = require('./services/scraper');
 const { sendLeaderboardReport, sendUserResultsReport } = require('./services/leaderboard-report');
 const { sendActivityReport } = require('./services/activity-report');
 const { sendNextDayPredictionEmails, sendPrematchPredictionEmails } = require('./services/prediction-reminders');
@@ -171,6 +171,13 @@ if (fs.existsSync(clientDist)) {
 }
 
 // ─────────── תזמון עדכון תוצאות ───────────
+cron.schedule('30 3 * * *', () => {
+  console.log('⏰ סריקת משחקים זמינים יומית...');
+  scanAvailableFixturesFromESPN()
+    .then((changes) => console.log(`   ✓ נסרקו ${changes.length} שינויים במשחקים זמינים`))
+    .catch((e) => console.error('   ✗ סריקת משחקים זמינים נכשלה:', e.message));
+}, { timezone: 'Asia/Jerusalem' });
+
 cron.schedule('0 4 * * *', () => {
   console.log('⏰ הפעלת עדכון יומי...');
   runDailyUpdate().catch(e => console.error(e));

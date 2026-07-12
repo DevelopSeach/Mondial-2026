@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
+    "scan:fixtures": "node scripts/scan-fixtures.js",
     "db:create": "node scripts/db-create.js",
     "db:init": "node scripts/db-init.js",
     "db:seed": "node seed.js",
