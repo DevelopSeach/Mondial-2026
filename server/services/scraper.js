@@ -78,6 +78,22 @@ async function getEspnUrl() {
   return ESPN_DEFAULT_URL;
 }
 
+function stageWindowDateRange({ start, end }) {
+  const from = String(start || '').slice(0, 10).replace(/-/g, '');
+  const to = String(end || '').slice(0, 10).replace(/-/g, '');
+  return `${from}-${to}`;
+}
+
+function buildEspnUrlForDates(baseUrl, datesRange) {
+  try {
+    const url = new URL(baseUrl);
+    url.searchParams.set('dates', datesRange);
+    return url.toString();
+  } catch (e) {
+    return `${ESPN_SCOREBOARD}?dates=${datesRange}`;
+  }
+}
+
 const STAGE_WINDOWS = [
   { stage: 'group', start: '2026-06-11T00:00:00Z', end: '2026-06-27T23:59:59Z' },
   { stage: 'round_of_32', start: '2026-06-28T00:00:00Z', end: '2026-07-03T23:59:59Z' },
@@ -393,12 +409,19 @@ async function upsertFixture(fixture, options = {}) {
 }
 
 async function fetchESPNEvents() {
-  const url = await getEspnUrl();
-  const { data } = await axios.get(url, {
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Mondial2026Bot/1.0)' },
-    timeout: 20000
-  });
-  return (data && data.events) || [];
+  const baseUrl = await getEspnUrl();
+  const urls = [...new Set(STAGE_WINDOWS.map((window) => buildEspnUrlForDates(baseUrl, stageWindowDateRange(window))))];
+  const byId = new Map();
+  for (const url of urls) {
+    const { data } = await axios.get(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Mondial2026Bot/1.0)' },
+      timeout: 20000
+    });
+    for (const ev of (data && data.events) || []) {
+      if (ev && ev.id) byId.set(String(ev.id), ev);
+    }
+  }
+  return [...byId.values()];
 }
 
 async function findFallbackMatch({ stage, kickoff, venue }) {
