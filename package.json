@@ -11,6 +11,7 @@
     "db:fill_players":"npm --prefix server run db:fill_players",
     "db:fill_users":"npm --prefix server run db:fill_users",
     "scan:fixtures": "npm --prefix server run scan:fixtures",
+    "scan:fix": "npm --prefix server run scan:fix",
     "db:setup":     "npm --prefix server run db:setup",
     "db:reset":     "npm --prefix server run db:reset",
     "setup":        "npm run install:all && npm run db:setup",
