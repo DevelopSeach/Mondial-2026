@@ -189,6 +189,10 @@ function isPlaceholderTeamLabel(value) {
     /^tbd$/,
     /^winner /,
     /^loser /,
+    /^semifinal \d+ winner$/,
+    /^semifinal \d+ loser$/,
+    /^semi-final \d+ winner$/,
+    /^semi-final \d+ loser$/,
     /^runner-up /,
     /^best 3rd place /,
     /^best third place /,
@@ -202,8 +206,8 @@ function isPlaceholderTeamLabel(value) {
 
 function preferConcreteLabel(incoming, existing) {
   if (incoming && !isPlaceholderTeamLabel(incoming)) return incoming;
-  if (existing && !isPlaceholderTeamLabel(existing)) return existing;
-  return incoming || existing || null;
+  if (existing) return existing;
+  return incoming || null;
 }
 
 function canInsertFixture(fixture) {
